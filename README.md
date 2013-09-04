@@ -1,6 +1,8 @@
-ESMJ3D
+BSAManager
 ====
 
-This is the base project containgin cooomon code for each of the 4 TES project for converting the contents of an ESM file 
-into a loadable scene graph and physics sim. On it's own this project does very little, see ElderScrollsExplorer for 
-more information.
+This prject will allow you to open the media files .bsa for teh Oblivion, Fallout 3 and Skyrim games.
+The media files are all the models, textures, sounds and animations. The esm file contain teh actual world state.
+For opening them I ahve an ESMLoader project.
+
+ 
