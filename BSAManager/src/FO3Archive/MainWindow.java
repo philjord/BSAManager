@@ -1,8 +1,3 @@
-// Decompiled by DJ v3.6.6.79 Copyright 2004 Atanas Neshkov  Date: 5/27/2009 3:52:54 PM
-// Home Page : http://members.fortunecity.com/neshkov/dj.html  - Check often for new version!
-// Decompiler options: packimports(3) 
-// Source File Name:   MainWindow.java
-
 package FO3Archive;
 
 import java.awt.Dimension;
@@ -29,11 +24,6 @@ import javax.swing.JTree;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
-
-// Referenced classes of package FO3Archive:
-//            ArchiveNode, ArchiveFileFilter, StatusDialog, CreateTask, 
-//            ArchiveFile, LoadTask, FolderNode, FileNode, 
-//            ExtractTask, Main
 
 public class MainWindow extends JFrame implements ActionListener
 {
