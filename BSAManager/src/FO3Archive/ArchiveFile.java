@@ -340,6 +340,7 @@ public class ArchiveFile
 
 	public void load() throws DBException, IOException
 	{
+	 
 		in = new RandomAccessFile(file, "r");
 		// lock jut in case anyone else tries an early read
 		synchronized (in)
@@ -387,7 +388,7 @@ public class ArchiveFile
 			String[] fileNames = new String[fileCount];
 
 			filenameHashToFileNameMap = new HashMap<Long, String>(fileCount);
-
+ 
 			int bufferIndex = 0;
 			for (int nameIndex = 0; nameIndex < fileCount; nameIndex++)
 			{
@@ -429,6 +430,7 @@ public class ArchiveFile
 
 			}
 		}
+		 
 
 	}
 

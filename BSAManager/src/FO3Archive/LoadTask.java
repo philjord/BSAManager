@@ -51,11 +51,11 @@ public class LoadTask extends Thread
 			if (archiveNode != null)
 			{
 				HashMap<String, FolderNode> foldersByName = new HashMap<String, FolderNode>();
-
+	
 				archiveFile.load();
 				List<ArchiveEntry> entries = archiveFile.getEntries(statusDialog);
 				DefaultMutableTreeNode parentNode;
-
+	
 				for (ArchiveEntry entry : entries)
 				{
 					parentNode = archiveNode;
@@ -167,7 +167,6 @@ public class LoadTask extends Thread
 		}
 		SwingUtilities.invokeLater(new Runnable()
 		{
-
 			public void run()
 			{
 				statusDialog.closeDialog(completed);
