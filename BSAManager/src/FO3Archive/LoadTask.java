@@ -51,11 +51,11 @@ public class LoadTask extends Thread
 			if (archiveNode != null)
 			{
 				HashMap<String, FolderNode> foldersByName = new HashMap<String, FolderNode>();
-	
+
 				archiveFile.load();
 				List<ArchiveEntry> entries = archiveFile.getEntries(statusDialog);
 				DefaultMutableTreeNode parentNode;
-	
+
 				for (ArchiveEntry entry : entries)
 				{
 					parentNode = archiveNode;
@@ -150,7 +150,7 @@ public class LoadTask extends Thread
 			{
 				archiveFile.load();
 			}
-
+			 
 			completed = true;
 		}
 		catch (DBException exc)
@@ -165,12 +165,16 @@ public class LoadTask extends Thread
 		{
 			Main.logException("Exception while loading archive", exc);
 		}
-		SwingUtilities.invokeLater(new Runnable()
+		
+		if (statusDialog != null)
 		{
-			public void run()
+			SwingUtilities.invokeLater(new Runnable()
 			{
-				statusDialog.closeDialog(completed);
-			}
-		});
+				public void run()
+				{
+					statusDialog.closeDialog(completed);
+				}
+			});
+		}
 	}
 }
