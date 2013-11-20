@@ -131,6 +131,8 @@ public class ArchiveFile
 			throw new IllegalArgumentException("Archive entry not valid for this archive");
 		else
 			return new ArchiveInputStream(in, entry);
+		
+		 
 	}
 
 	public void close() throws IOException

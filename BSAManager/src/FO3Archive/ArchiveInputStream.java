@@ -27,6 +27,8 @@ public class ArchiveInputStream extends ByteArrayInputStream
 		synchronized (in)
 		{
 			long dataOffset = entry.getFileOffset();
+			byte[] dataBufferOut = new byte[entry.getFileLength()];
+			in.seek(dataOffset);
 
 			boolean isCompressed = entry.isCompressed();
 			if (isCompressed && entry.getFileLength() > 0)
@@ -35,41 +37,26 @@ public class ArchiveInputStream extends ByteArrayInputStream
 				int compressedLength = entry.getCompressedLength();
 				byte[] dataBufferIn = new byte[compressedLength];
 
-				in.seek(dataOffset);
-
 				int c = in.read(dataBufferIn, 0, compressedLength);
 				if (c < 0)
 					throw new EOFException("Unexpected end of stream while inflating file");
 
-				byte[] dataBufferOut = new byte[entry.getFileLength()];
 				Inflater inflater = new Inflater();
-
 				inflater.setInput(dataBufferIn);
 				inflater.setOutput(dataBufferOut);
 				inflater.inflate(4);//Z_FINISH
-
-				this.buf = dataBufferOut;
-				this.pos = 0;
-				this.count = buf.length;
-
 				inflater.end();
-
 			}
 			else
 			{
-				byte[] dataBufferOut = new byte[entry.getFileLength()];
-
-				in.seek(dataOffset);
-
 				int c = in.read(dataBufferOut, 0, entry.getFileLength());
 				if (c < 0)
 					throw new EOFException("Unexpected end of stream while inflating file");
-
-				this.buf = dataBufferOut;
-				this.pos = 0;
-				this.count = buf.length;
-
 			}
+
+			this.buf = dataBufferOut;
+			this.pos = 0;
+			this.count = buf.length;
 		}
 	}
 }
