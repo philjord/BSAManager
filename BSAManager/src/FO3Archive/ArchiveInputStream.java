@@ -5,10 +5,11 @@
 
 package FO3Archive;
 
-import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+
+import tools.io.FastByteArrayInputStream;
 
 import com.jcraft.jzlib.Inflater;
 
@@ -16,7 +17,7 @@ import com.jcraft.jzlib.Inflater;
  * @author philip
  *
  */
-public class ArchiveInputStream extends ByteArrayInputStream
+public class ArchiveInputStream extends FastByteArrayInputStream
 {
 
 	@SuppressWarnings("deprecation")
