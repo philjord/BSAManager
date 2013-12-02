@@ -405,6 +405,8 @@ public class ArchiveFile
 
 				String filename = new String(nameBuffer, startIndex, bufferIndex - startIndex);
 				fileNames[nameIndex] = filename;
+				//TODO: I don't need to load these this early, I could do this just as teh folder.load call is made			
+				// save tiem and space
 				filenameHashToFileNameMap.put(new HashCode(filename, false).getHash(), filename);
 
 				bufferIndex++;
