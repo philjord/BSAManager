@@ -111,7 +111,7 @@ public class ArchiveFile
 		}
 		catch (IOException e)
 		{
-			System.out.println("ArchiveFile Exception for filename:  " + e.getMessage());
+			System.out.println("ArchiveFile Exception for filename:  " + e + " " + e.getStackTrace()[0]);
 		}
 
 		return ret;
@@ -166,7 +166,7 @@ public class ArchiveFile
 		}
 		catch (IOException e)
 		{
-			System.out.println("ArchiveFile Exception for folderName: " + folderName + " " + e.getMessage());
+			System.out.println("ArchiveFile Exception for folderName: " + folderName + " " + e + " " + e.getStackTrace()[0]);
 		}
 
 		return null;
@@ -219,7 +219,7 @@ public class ArchiveFile
 		}
 		catch (IOException e)
 		{
-			System.out.println("ArchiveFile Exception for filename:  " + fullFileName + " " + e.getMessage());
+			System.out.println("ArchiveFile Exception for filename:  " + fullFileName + " " + e + " " + e.getStackTrace()[0]);
 		}
 
 		return null;
