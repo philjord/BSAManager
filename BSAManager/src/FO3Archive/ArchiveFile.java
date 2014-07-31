@@ -51,6 +51,11 @@ public class ArchiveFile
 			this.folderFileCount = folderFileCount;
 			this.offset = offset;
 		}
+
+		public String toString()
+		{
+			return "Folder:" + folderName;
+		}
 	}
 
 	private Map<Long, String> filenameHashToFileNameMap;
@@ -131,8 +136,7 @@ public class ArchiveFile
 			throw new IllegalArgumentException("Archive entry not valid for this archive");
 		else
 			return new ArchiveInputStream(in, entry);
-		
-		 
+
 	}
 
 	public void close() throws IOException
@@ -146,6 +150,8 @@ public class ArchiveFile
 
 	public Folder getFolder(String folderName)
 	{
+ 
+
 		StringBuilder buildName = new StringBuilder(folderName.toLowerCase());
 		int sep;
 		while ((sep = buildName.indexOf("/")) >= 0)
@@ -154,6 +160,7 @@ public class ArchiveFile
 		}
 		folderName = buildName.toString();
 		long folderHash = new HashCode(folderName, true).getHash();
+
 		Folder folder = folderHashToFolderMap.get(folderHash);
 		try
 		{
@@ -161,8 +168,8 @@ public class ArchiveFile
 			{
 				loadFolder(folder);
 			}
-			return folder;
 
+			return folder;
 		}
 		catch (IOException e)
 		{
@@ -342,7 +349,7 @@ public class ArchiveFile
 
 	public void load() throws DBException, IOException
 	{
-	 
+
 		in = new RandomAccessFile(file, "r");
 		// lock jut in case anyone else tries an early read
 		synchronized (in)
@@ -390,7 +397,7 @@ public class ArchiveFile
 			String[] fileNames = new String[fileCount];
 
 			filenameHashToFileNameMap = new HashMap<Long, String>(fileCount);
- 
+
 			int bufferIndex = 0;
 			for (int nameIndex = 0; nameIndex < fileCount; nameIndex++)
 			{
@@ -434,7 +441,6 @@ public class ArchiveFile
 
 			}
 		}
-		 
 
 	}
 
