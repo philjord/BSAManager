@@ -26,7 +26,8 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 		super(new byte[0]);//reset below once data is availble
 
 		byte[] dataBufferOut = new byte[entry.getFileLength()];
-
+		in.seek(entry.getFileOffset());
+		
 		boolean isCompressed = entry.isCompressed();
 		if (isCompressed && entry.getFileLength() > 0)
 		{
@@ -36,7 +37,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 
 			synchronized (in)
 			{
-				in.seek(entry.getFileOffset());
+
 				int c = in.read(dataBufferIn, 0, compressedLength);
 				if (c < 0)
 					throw new EOFException("Unexpected end of stream while inflating file");
