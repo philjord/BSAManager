@@ -162,6 +162,13 @@ public class ArchiveFile
 		long folderHash = new HashCode(folderName, true).getHash();
 
 		Folder folder = folderHashToFolderMap.get(folderHash);
+		
+		// fine as likely one of many bsas searched
+		/*if (folder == null)
+		{
+			System.out.println("requested folder does not exist " + folderName + " in " + file);
+		}*/
+		
 		try
 		{
 			if (folder != null && folder.fileToHashMap == null)
@@ -430,7 +437,6 @@ public class ArchiveFile
 				}
 
 				//hash section ignored (just use the tes4+ hash system)					
-				
 
 				long fileDataStartOffset = 12 + hashtableOffset + (8 * fileCount);
 
