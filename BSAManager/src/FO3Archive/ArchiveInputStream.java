@@ -26,9 +26,10 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 		super(new byte[0]);//reset below once data is availble
 
 		byte[] dataBufferOut = new byte[entry.getFileLength()];
-		
+
 		//TODO: if textures weren't compressed I could hand out mapped bytebuffers all the way through to jogl
 		// but they are 4 times as big so no luck
+		// also the deflate doesn't accept a bytebuffer
 		boolean isCompressed = entry.isCompressed();
 		if (isCompressed && entry.getFileLength() > 0)
 		{
@@ -65,5 +66,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 		this.pos = 0;
 		this.count = buf.length;
 	}
+
+	
 
 }
