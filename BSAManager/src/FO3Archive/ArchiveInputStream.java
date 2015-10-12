@@ -27,7 +27,8 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 
 		byte[] dataBufferOut = new byte[entry.getFileLength()];
 		
-		
+		//TODO: if textures weren't compressed I could hand out mapped bytebuffers all the way through to jogl
+		// but they are 4 times as big so no luck
 		boolean isCompressed = entry.isCompressed();
 		if (isCompressed && entry.getFileLength() > 0)
 		{
