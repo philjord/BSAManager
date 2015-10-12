@@ -5,6 +5,8 @@
 
 package FO3Archive;
 
+import tools.io.PrimitiveBytes;
+
 public class HashCode implements Comparable<HashCode>
 {
 	private long hash = 0L;
@@ -37,7 +39,7 @@ public class HashCode implements Comparable<HashCode>
 
 		if (name != null && name.length() > 0)
 		{
-			byte buffer[] = name.getBytes();
+			byte buffer[] = PrimitiveBytes.getBytesFast(name);//name.getBytes();
 			int length = buffer.length;
 			hash = (buffer[length - 1] & 255L) + ((long) length << 16) + ((buffer[0] & 255L) << 24);
 			if (length > 2)
@@ -59,7 +61,7 @@ public class HashCode implements Comparable<HashCode>
 
 		if (ext != null && ext.length() > 0)
 		{
-			byte buffer[] = ext.getBytes();
+			byte buffer[] = PrimitiveBytes.getBytesFast(ext);//ext.getBytes();
 			int length = buffer.length;
 			long subHash = 0L;
 			for (int i = 0; i < length; i++)

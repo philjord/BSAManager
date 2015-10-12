@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import tools.io.MappedByteBufferRAF;
+
 public class ArchiveFile
 {
 	private int version;
@@ -162,13 +164,13 @@ public class ArchiveFile
 		long folderHash = new HashCode(folderName, true).getHash();
 
 		Folder folder = folderHashToFolderMap.get(folderHash);
-		
+
 		// fine as likely one of many bsas searched
 		/*if (folder == null)
 		{
 			System.out.println("requested folder does not exist " + folderName + " in " + file);
 		}*/
-		
+
 		try
 		{
 			if (folder != null && folder.fileToHashMap == null)
@@ -364,9 +366,10 @@ public class ArchiveFile
 
 	public void load() throws DBException, IOException
 	{
-
-		in = new RandomAccessFile(file, "r");
-		// lock jut in case anyone else tries an early read
+		//in = new RandomAccessFile(file, "r");
+		in = new MappedByteBufferRAF(file, "r");
+		
+		// lock just in case anyone else tries an early read
 		synchronized (in)
 		{
 			// test for TES3 BSA format flag\
@@ -530,6 +533,7 @@ public class ArchiveFile
 				for (int nameIndex = 0; nameIndex < fileCount; nameIndex++)
 				{
 					int startIndex = bufferIndex;
+					// search through for the end of the filename
 					for (; bufferIndex < fileNamesLength && nameBuffer[bufferIndex] != 0; bufferIndex++)
 					{
 						;
@@ -538,10 +542,9 @@ public class ArchiveFile
 					if (bufferIndex >= fileNamesLength)
 						throw new DBException("File names buffer truncated");
 
-					String filename = new String(nameBuffer, startIndex, bufferIndex - startIndex);
+					String filename = new String(nameBuffer, startIndex, bufferIndex - startIndex);					
 					fileNames[nameIndex] = filename;
-					//TODO: I don't need to load these this early, I could do this just as teh folder.load call is made			
-					// save tiem and space
+					//these must be loaded and hashed now as the folder only has the hash values in it
 					filenameHashToFileNameMap.put(new HashCode(filename, false).getHash(), filename);
 
 					bufferIndex++;

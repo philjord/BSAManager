@@ -17,6 +17,8 @@ import java.util.zip.Deflater;
 
 import javax.swing.SwingUtilities;
 
+import tools.io.MappedByteBufferRAF;
+
 // Referenced classes of package FO3Archive:
 //            DBException, ArchiveEntry, Main, HashCode, 
 //            StatusDialog
@@ -81,7 +83,8 @@ public class CreateTask extends Thread
 			{
 				if (archiveFile.exists() && !archiveFile.delete())
 					throw new IOException("Unable to delete '" + archiveFile.getPath() + "'");
-				out = new RandomAccessFile(archiveFile, "rw");
+				//out = new RandomAccessFile(archiveFile, "rw");
+				out = new MappedByteBufferRAF(archiveFile, "rw");
 				writeArchive(out);
 				out.close();
 				out = null;
