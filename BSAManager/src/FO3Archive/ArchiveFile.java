@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -139,7 +140,19 @@ public class ArchiveFile
 			throw new IllegalArgumentException("Archive entry not valid for this archive");
 		else
 			return new ArchiveInputStream(in, entry);
-
+	}
+	
+	public ByteBuffer getByteBuffer(ArchiveEntry entry) throws IOException
+	{
+		if (in == null)
+			throw new IOException("Archive file is not open");
+		else if (entry.getIdentifier() != hashCode())
+			throw new IllegalArgumentException("Archive entry not valid for this archive");
+		else if(entry.isCompressed())
+			throw new IOException("Archive entry isCompressed, can't return a bytebuffer " + entry.getFileName());
+		else
+			return ArchiveInputStream.getByteBuffer(in, entry);
+		 
 	}
 
 	public void close() throws IOException

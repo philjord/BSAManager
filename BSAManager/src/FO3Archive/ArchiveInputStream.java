@@ -8,8 +8,11 @@ package FO3Archive;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 
 import tools.io.FastByteArrayInputStream;
+import tools.io.MappedByteBufferRAF;
 
 import com.jcraft.jzlib.Inflater;
 
@@ -19,17 +22,13 @@ import com.jcraft.jzlib.Inflater;
  */
 public class ArchiveInputStream extends FastByteArrayInputStream
 {
-
-	@SuppressWarnings("deprecation")
 	public ArchiveInputStream(RandomAccessFile in, ArchiveEntry entry) throws IOException
 	{
 		super(new byte[0]);//reset below once data is availble
 
 		byte[] dataBufferOut = new byte[entry.getFileLength()];
 
-		//TODO: if textures weren't compressed I could hand out mapped bytebuffers all the way through to jogl
-		// but they are 4 times as big so no luck
-		// also the deflate doesn't accept a bytebuffer
+		//the deflate doesn't accept a bytebuffer
 		boolean isCompressed = entry.isCompressed();
 		if (isCompressed && entry.getFileLength() > 0)
 		{
@@ -67,6 +66,25 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 		this.count = buf.length;
 	}
 
-	
+	public static ByteBuffer getByteBuffer(RandomAccessFile in, ArchiveEntry entry) throws IOException
+	{
+		if (entry.isCompressed())
+			throw new IOException("Can't request a bytebuffer for a compressed entry");
+		else if (!(in instanceof MappedByteBufferRAF))
+			throw new IOException("Can't request a bytebuffer for !(in instanceof MappedByteBufferRAF)");
+
+		synchronized (in)
+		{
+			MappedByteBuffer buf = ((MappedByteBufferRAF) in).getMappedByteBuffer();
+
+			buf.limit((int) (entry.getFileOffset() + entry.getFileLength()));
+			buf.position((int) entry.getFileOffset());
+			ByteBuffer ret = buf.slice();
+			buf.position(0);
+			buf.limit(buf.capacity());
+			return ret;
+		}
+
+	}
 
 }
