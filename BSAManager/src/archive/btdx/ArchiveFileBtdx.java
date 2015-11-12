@@ -5,6 +5,8 @@ import gui.StatusDialog;
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -13,8 +15,10 @@ import java.util.Map;
 import tools.io.MappedByteBufferRAF;
 import archive.ArchiveEntry;
 import archive.ArchiveFile;
+import archive.ArchiveInputStream;
 import archive.DBException;
 import archive.HashCode;
+import archive.btdx.ArchiveEntryDX10.DX10Chunk;
 
 public class ArchiveFileBtdx extends ArchiveFile
 {
@@ -124,10 +128,31 @@ public class ArchiveFileBtdx extends ArchiveFile
 		throw new UnsupportedOperationException("BTDX is loaded at intial load time, so this should never be called");
 	}
 
+	public InputStream getInputStream(ArchiveEntry entry) throws IOException
+	{
+		if (in == null)
+			throw new IOException("Archive file is not open");
+		else if (entry.getIdentifier() != hashCode())
+			throw new IllegalArgumentException("Archive entry not valid for this archive");
+		else
+		{
+			if (bsaFileType == BsaFileType.DX10)
+			{
+				return new ArchiveInputStreamDX10(in, entry);
+			}
+			else
+			{
+				return new ArchiveInputStream(in, entry);
+			}
+		}
+	}
+
 	public void load() throws DBException, IOException
 	{
-		//in = new RandomAccessFile(file, "r");
-		in = new MappedByteBufferRAF(file, "r");
+		if (file.length() > Integer.MAX_VALUE)
+			in = new RandomAccessFile(file, "r");
+		else
+			in = new MappedByteBufferRAF(file, "r"); // we exceed an int!! new fallout4 gear!
 
 		// lock just in case anyone else tries an early read
 		synchronized (in)
@@ -212,17 +237,17 @@ public class ArchiveFileBtdx extends ArchiveFile
 				long fileHashCode = new HashCode(fileName, false).getHash();
 				filenameHashToFileNameMap.put(fileHashCode, fileName);
 
-				ArchiveEntry entry = new ArchiveEntry(this, folder.folderName, fileName);
 				if (bsaFileType == BsaFileType.GNRL)
 				{
+					ArchiveEntry entry = new ArchiveEntry(this, folder.folderName, fileName);
 
 					byte buffer[] = new byte[36];
 					in.read(buffer);
 
-				//	int unk00 = getInteger(buffer, 0);// 00 - name hash?
-				//	String ext = new String(buffer, 4, 4); // 04 - extension
-				//	int unk08 = getInteger(buffer, 8); // 08 - directory hash?
-				//	int unk0C = getInteger(buffer, 12); // 0C - flags? 00100100
+					//	int nameHash = getInteger(buffer, 0);// 00 - name hash?
+					//	String ext = new String(buffer, 4, 4); // 04 - extension
+					//	int dirHash = getInteger(buffer, 8); // 08 - directory hash?
+					//	int unk0C = getInteger(buffer, 12); // 0C - flags? 00100100
 					long offset = getLong(buffer, 16); // 10 - relative to start of file
 					int packedLen = getInteger(buffer, 24); // 18 - packed length (zlib)
 					int unpackedLen = getInteger(buffer, 28); // 1C - unpacked length
@@ -243,17 +268,44 @@ public class ArchiveFileBtdx extends ArchiveFile
 				}
 				else
 				{
-					//	UInt32	nameHash;		// 00
-					//	char	ext[4];			// 04
-					//	UInt32	dirHash;		// 08
-					//	UInt8	unk0C;			// 0C
-					//	UInt8	numChunks;		// 0D
-					//	UInt16	chunkHdrLen;	// 0E - size of one chunk header
-					//	UInt16	width;			// 10
-					//	UInt16	height;			// 12
-					//	UInt8	numMips;		// 14
-					//	UInt8	format;			// 15 - DXGI_FORMAT
-					//	UInt16	unk16;			// 16 - 0800
+					ArchiveEntryDX10 entry = new ArchiveEntryDX10(this, folder.folderName, fileName);
+
+					byte[] buffer = new byte[24];
+					in.read(buffer);
+					// int nameHash = getInteger(buffer, 0);// 00 - name hash?
+					//	String ext = new String(buffer, 4, 4); // 04 - extension
+					//	int dirHash = getInteger(buffer, 8); // 08 - directory hash?
+					//	byte	unk0C= buffer[12]& 0xff;		// 
+					entry.numChunks = buffer[13] & 0xff; // 
+					entry.chunkHdrLen = getShort(buffer, 14); //  - size of one chunk header
+					entry.width = getShort(buffer, 16); // 
+					entry.height = getShort(buffer, 18); // 
+					entry.numMips = buffer[20] & 0xff; // 
+					entry.format = buffer[21] & 0xff; //  - DXGI_FORMAT
+					entry.unk16 = getShort(buffer, 22); //  - 0800
+
+					if (entry.numChunks != 0)
+					{
+						entry.chunks = new DX10Chunk[entry.numChunks];
+
+						for (int c = 0; c < entry.numChunks; c++)
+						{
+							in.read(buffer);
+							entry.chunks[c] = new DX10Chunk();
+							entry.chunks[c].offset = getLong(buffer, 0); // 00
+							entry.chunks[c].packedLen = getInteger(buffer, 8); // 08
+							entry.chunks[c].unpackedLen = getInteger(buffer, 12); // 0C
+							entry.chunks[c].startMip = getShort(buffer, 16); // 10
+							entry.chunks[c].endMip = getShort(buffer, 18); // 12
+							entry.chunks[c].unk14 = getInteger(buffer, 20); // 14 - BAADFOOD
+
+						}
+					}
+
+					entry.setIdentifier(hashCode());
+
+					folder.fileToHashMap.put(fileHashCode, entry);
+					folder.folderFileCount++;
 
 				}
 			}
