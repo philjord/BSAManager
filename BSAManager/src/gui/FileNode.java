@@ -3,9 +3,11 @@
 // Decompiler options: packimports(3) 
 // Source File Name:   FileNode.java
 
-package FO3Archive;
+package gui;
 
 import javax.swing.tree.DefaultMutableTreeNode;
+
+import archive.ArchiveEntry;
 
 // Referenced classes of package FO3Archive:
 //            ArchiveEntry

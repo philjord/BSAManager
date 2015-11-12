@@ -3,7 +3,7 @@
 // Decompiler options: packimports(3) 
 // Source File Name:   ArchiveFileFilter.java
 
-package FO3Archive;
+package archive;
 
 import java.io.File;
 
@@ -18,7 +18,7 @@ public class ArchiveFileFilter extends FileFilter
 
 	public String getDescription()
 	{
-		return "Archive Files (*.bsa)";
+		return "Archive Files (*.bsa, *.ba2)";
 	}
 
 	public boolean accept(File file)
@@ -31,7 +31,7 @@ public class ArchiveFileFilter extends FileFilter
 			if (sep > 0)
 			{
 				String extension = name.substring(sep);
-				if (extension.equalsIgnoreCase(".bsa"))
+				if (extension.equalsIgnoreCase(".bsa") || extension.equalsIgnoreCase(".ba2"))
 					accept = true;
 			}
 		}

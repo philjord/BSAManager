@@ -1,4 +1,4 @@
-package FO3Archive;
+package gui;
 
 import java.awt.Dimension;
 import java.awt.Point;
@@ -24,6 +24,15 @@ import javax.swing.JTree;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
+
+import archive.ArchiveEntry;
+import archive.ArchiveFile;
+import archive.ArchiveFileFilter;
+import archive.CreateTask;
+import archive.DBException;
+import archive.ExtractTask;
+import archive.LoadTask;
+import archive.Main;
 
 public class MainWindow extends JFrame implements ActionListener
 {
@@ -136,7 +145,7 @@ public class MainWindow extends JFrame implements ActionListener
 		}
 	}
 
-	private void newFile() throws InterruptedException, IOException
+	private void newFile() throws InterruptedException, IOException, DBException
 	{
 		closeFile();
 		String currentDirectory = Main.properties.getProperty("current.directory");
@@ -207,7 +216,9 @@ public class MainWindow extends JFrame implements ActionListener
 			JOptionPane.showMessageDialog(this, "No files were included in the archive", "Archive empty", 1);
 			return;
 		}
-		ArchiveFile archiveFile2 = new ArchiveFile(file);
+
+		ArchiveFile archiveFile2 = ArchiveFile.createArchiveFile(file);
+
 		ArchiveNode archiveNode = new ArchiveNode(archiveFile2);
 		statusDialog = new StatusDialog(this, "Loading " + archiveFile2.getName());
 		LoadTask loadTask = new LoadTask(archiveFile2, archiveNode, statusDialog);
@@ -224,9 +235,10 @@ public class MainWindow extends JFrame implements ActionListener
 		{
 			archiveFile2.close();
 		}
+
 	}
 
-	private void openFile() throws InterruptedException, IOException
+	private void openFile() throws InterruptedException, IOException, DBException
 	{
 		closeFile();
 		String currentDirectory = Main.properties.getProperty("current.directory");
@@ -250,7 +262,7 @@ public class MainWindow extends JFrame implements ActionListener
 		{
 			File file = chooser.getSelectedFile();
 			Main.properties.setProperty("current.directory", file.getParent());
-			ArchiveFile archiveFile2 = new ArchiveFile(file);
+			ArchiveFile archiveFile2 = ArchiveFile.createArchiveFile(file);
 			ArchiveNode archiveNode = new ArchiveNode(archiveFile2);
 			StatusDialog statusDialog = new StatusDialog(this, "Loading " + archiveFile2.getName());
 			LoadTask loadTask = new LoadTask(archiveFile2, archiveNode, statusDialog);

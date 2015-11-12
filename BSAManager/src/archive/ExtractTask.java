@@ -3,7 +3,9 @@
 // Decompiler options: packimports(3) 
 // Source File Name:   ExtractTask.java
 
-package FO3Archive;
+package archive;
+
+import gui.StatusDialog;
 
 import java.io.File;
 import java.io.FileOutputStream;

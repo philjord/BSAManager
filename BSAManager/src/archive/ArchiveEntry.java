@@ -3,7 +3,7 @@
 // Decompiler options: packimports(3) 
 // Source File Name:   ArchiveEntry.java
 
-package FO3Archive;
+package archive;
 
 // Referenced classes of package FO3Archive:
 //            HashCode

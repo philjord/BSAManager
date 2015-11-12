@@ -3,7 +3,9 @@
 // Decompiler options: packimports(3) 
 // Source File Name:   Main.java
 
-package FO3Archive;
+package archive;
+
+import gui.MainWindow;
 
 import java.io.File;
 import java.io.FileInputStream;

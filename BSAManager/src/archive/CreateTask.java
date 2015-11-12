@@ -3,7 +3,9 @@
 // Decompiler options: packimports(3) 
 // Source File Name:   CreateTask.java
 
-package FO3Archive;
+package archive;
+
+import gui.StatusDialog;
 
 import java.io.EOFException;
 import java.io.File;

@@ -3,7 +3,7 @@
 // Decompiler options: packimports(3) 
 // Source File Name:   DBException.java
 
-package FO3Archive;
+package archive;
 
 public class DBException extends Exception
 {

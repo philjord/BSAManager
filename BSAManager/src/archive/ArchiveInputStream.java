@@ -3,7 +3,7 @@
 // Decompiler options: packimports(3) 
 // Source File Name:   ArchiveInputStream.java
 
-package FO3Archive;
+package archive;
 
 import java.io.EOFException;
 import java.io.IOException;

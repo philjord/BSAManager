@@ -3,7 +3,7 @@
 // Decompiler options: packimports(3) 
 // Source File Name:   StatusDialog.java
 
-package FO3Archive;
+package gui;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;

@@ -3,7 +3,12 @@
 // Decompiler options: packimports(3) 
 // Source File Name:   LoadTask.java
 
-package FO3Archive;
+package archive;
+
+import gui.ArchiveNode;
+import gui.FileNode;
+import gui.FolderNode;
+import gui.StatusDialog;
 
 import java.io.IOException;
 import java.util.HashMap;

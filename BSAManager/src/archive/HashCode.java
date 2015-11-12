@@ -3,7 +3,7 @@
 // Decompiler options: packimports(3) 
 // Source File Name:   HashCode.java
 
-package FO3Archive;
+package archive;
 
 import tools.io.PrimitiveBytes;
 
