@@ -157,14 +157,11 @@ public class ArchiveFileBtdx extends ArchiveFile
 		// lock just in case anyone else tries an early read
 		synchronized (in)
 		{
-
-			in.seek(0);
-
 			//load header
-			byte header[] = new byte[36];
+			byte header[] = new byte[24];
 
 			int count = in.read(header);
-			if (count != 36)
+			if (count != 24)
 				throw new EOFException("Archive header is incomplete");
 
 			String id = new String(header, 0, 4);
@@ -184,7 +181,7 @@ public class ArchiveFileBtdx extends ArchiveFile
 
 			fileCount = getInteger(header, 12);
 			long nameTableOffset = getLong(header, 16);
-			// end of header read
+			// end of header read 24 bytes long
 
 			// now all the files header records exist in either General format or DX10 format
 
@@ -213,18 +210,18 @@ public class ArchiveFileBtdx extends ArchiveFile
 			//build up a trival folderhash from all the file names
 			// and preload the archive entries from the data above
 			//reset to below header
-			in.seek(36);
+			in.seek(24);
 
 			folderHashToFolderMap = new HashMap<Long, Folder>();
 			filenameHashToFileNameMap = new HashMap<Long, String>(fileCount);
 			for (int i = 0; i < fileCount; i++)
 			{
-				String fullFileName = fileNames[i];
+				String fullFileName = fileNames[i].toLowerCase();
 				int pathSep = fullFileName.lastIndexOf("\\");
 				String folderName = fullFileName.substring(0, pathSep);
 				long folderHash = new HashCode(folderName, true).getHash();
 				Folder folder = folderHashToFolderMap.get(folderHash);
-
+	
 				if (folder == null)
 				{
 					folder = new Folder(0, -1);
@@ -243,11 +240,11 @@ public class ArchiveFileBtdx extends ArchiveFile
 
 					byte buffer[] = new byte[36];
 					in.read(buffer);
-
-					//	int nameHash = getInteger(buffer, 0);// 00 - name hash?
-					//	String ext = new String(buffer, 4, 4); // 04 - extension
-					//	int dirHash = getInteger(buffer, 8); // 08 - directory hash?
-					//	int unk0C = getInteger(buffer, 12); // 0C - flags? 00100100
+					
+				//		int nameHash = getInteger(buffer, 0);// 00 - name hash?
+				//		String ext = new String(buffer, 4, 4); // 04 - extension
+				//		int dirHash = getInteger(buffer, 8); // 08 - directory hash?
+				//		int unk0C = getInteger(buffer, 12); // 0C - flags? 00100100
 					long offset = getLong(buffer, 16); // 10 - relative to start of file
 					int packedLen = getInteger(buffer, 24); // 18 - packed length (zlib)
 					int unpackedLen = getInteger(buffer, 28); // 1C - unpacked length
@@ -272,10 +269,10 @@ public class ArchiveFileBtdx extends ArchiveFile
 
 					byte[] buffer = new byte[24];
 					in.read(buffer);
-					// int nameHash = getInteger(buffer, 0);// 00 - name hash?
-					//	String ext = new String(buffer, 4, 4); // 04 - extension
-					//	int dirHash = getInteger(buffer, 8); // 08 - directory hash?
-					//	byte	unk0C= buffer[12]& 0xff;		// 
+				//	 int nameHash = getInteger(buffer, 0);// 00 - name hash?
+				//		String ext = new String(buffer, 4, 4); // 04 - extension
+				//		int dirHash = getInteger(buffer, 8); // 08 - directory hash?
+				//		int	unk0C= buffer[12]& 0xff;		// 
 					entry.numChunks = buffer[13] & 0xff; // 
 					entry.chunkHdrLen = getShort(buffer, 14); //  - size of one chunk header
 					entry.width = getShort(buffer, 16); // 
