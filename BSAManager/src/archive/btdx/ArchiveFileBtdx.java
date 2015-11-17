@@ -252,10 +252,10 @@ public class ArchiveFileBtdx extends ArchiveFile
 
 					entry.setIdentifier(hashCode());
 					entry.setFileOffset(offset);
-					entry.setFileLength(packedLen);
+					entry.setFileLength(unpackedLen);
 					entry.setCompressed(packedLen != 0 && packedLen != unpackedLen);
 
-					int compLen = unpackedLen;
+					int compLen = packedLen;
 					if (compLen == 0)
 						compLen = unk20; // what
 
