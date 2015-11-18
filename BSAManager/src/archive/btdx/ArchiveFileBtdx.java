@@ -39,6 +39,7 @@ public class ArchiveFileBtdx extends ArchiveFile
 
 	/**
 	 * CAUTION Super HEAVY WEIGHT!!
+	 * 
 	 * @return
 	 */
 	public List<ArchiveEntry> getEntries(StatusDialog statusDialog)
@@ -97,7 +98,7 @@ public class ArchiveFileBtdx extends ArchiveFile
 
 		if (folder != null)
 		{
-			//do we need to load the files in this folder?
+			// do we need to load the files in this folder?
 			if (folder.fileToHashMap == null)
 			{
 				System.out.println("BTDX folderName not indexed " + folderName);
@@ -157,7 +158,7 @@ public class ArchiveFileBtdx extends ArchiveFile
 		// lock just in case anyone else tries an early read
 		synchronized (in)
 		{
-			//load header
+			// load header
 			byte header[] = new byte[24];
 
 			int count = in.read(header);
@@ -188,10 +189,10 @@ public class ArchiveFileBtdx extends ArchiveFile
 			// but we are going to jump to the name table (which is after th file records)
 			in.seek(nameTableOffset);
 
-			// ready		
+			// ready
 			String[] fileNames = new String[fileCount];
 
-			//load fileNameBlock
+			// load fileNameBlock
 			byte[] nameBuffer = new byte[0x10000];
 
 			for (int i = 0; i < fileCount; i++)
@@ -207,9 +208,9 @@ public class ArchiveFileBtdx extends ArchiveFile
 				fileNames[i] = filename;
 			}
 
-			//build up a trival folderhash from all the file names
+			// build up a trival folderhash from all the file names
 			// and preload the archive entries from the data above
-			//reset to below header
+			// reset to below header
 			in.seek(24);
 
 			folderHashToFolderMap = new HashMap<Long, Folder>();
@@ -221,7 +222,7 @@ public class ArchiveFileBtdx extends ArchiveFile
 				String folderName = fullFileName.substring(0, pathSep);
 				long folderHash = new HashCode(folderName, true).getHash();
 				Folder folder = folderHashToFolderMap.get(folderHash);
-	
+
 				if (folder == null)
 				{
 					folder = new Folder(0, -1);
@@ -240,11 +241,11 @@ public class ArchiveFileBtdx extends ArchiveFile
 
 					byte buffer[] = new byte[36];
 					in.read(buffer);
-					
-				//		int nameHash = getInteger(buffer, 0);// 00 - name hash?
-				//		String ext = new String(buffer, 4, 4); // 04 - extension
-				//		int dirHash = getInteger(buffer, 8); // 08 - directory hash?
-				//		int unk0C = getInteger(buffer, 12); // 0C - flags? 00100100
+
+					// int nameHash = getInteger(buffer, 0);// 00 - name hash?
+					// String ext = new String(buffer, 4, 4); // 04 - extension
+					// int dirHash = getInteger(buffer, 8); // 08 - directory hash?
+					// int unk0C = getInteger(buffer, 12); // 0C - flags? 00100100
 					long offset = getLong(buffer, 16); // 10 - relative to start of file
 					int packedLen = getInteger(buffer, 24); // 18 - packed length (zlib)
 					int unpackedLen = getInteger(buffer, 28); // 1C - unpacked length
@@ -269,17 +270,17 @@ public class ArchiveFileBtdx extends ArchiveFile
 
 					byte[] buffer = new byte[24];
 					in.read(buffer);
-				//	 int nameHash = getInteger(buffer, 0);// 00 - name hash?
-				//		String ext = new String(buffer, 4, 4); // 04 - extension
-				//		int dirHash = getInteger(buffer, 8); // 08 - directory hash?
-				//		int	unk0C= buffer[12]& 0xff;		// 
-					entry.numChunks = buffer[13] & 0xff; // 
-					entry.chunkHdrLen = getShort(buffer, 14); //  - size of one chunk header
-					entry.width = getShort(buffer, 16); // 
-					entry.height = getShort(buffer, 18); // 
-					entry.numMips = buffer[20] & 0xff; // 
-					entry.format = buffer[21] & 0xff; //  - DXGI_FORMAT
-					entry.unk16 = getShort(buffer, 22); //  - 0800
+					// int nameHash = getInteger(buffer, 0);// 00 - name hash?
+					// String ext = new String(buffer, 4, 4); // 04 - extension
+					// int dirHash = getInteger(buffer, 8); // 08 - directory hash?
+					// int unk0C= buffer[12]& 0xff; //
+					entry.numChunks = buffer[13] & 0xff; //
+					entry.chunkHdrLen = getShort(buffer, 14); // - size of one chunk header
+					entry.width = getShort(buffer, 16); //
+					entry.height = getShort(buffer, 18); //
+					entry.numMips = buffer[20] & 0xff; //
+					entry.format = buffer[21] & 0xff; // - DXGI_FORMAT
+					entry.unk16 = getShort(buffer, 22); // - 0800
 
 					if (entry.numChunks != 0)
 					{
@@ -295,7 +296,6 @@ public class ArchiveFileBtdx extends ArchiveFile
 							entry.chunks[c].startMip = getShort(buffer, 16); // 10
 							entry.chunks[c].endMip = getShort(buffer, 18); // 12
 							entry.chunks[c].unk14 = getInteger(buffer, 20); // 14 - BAADFOOD
-
 						}
 					}
 

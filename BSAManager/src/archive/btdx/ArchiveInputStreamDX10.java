@@ -123,10 +123,10 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 
 		if (ok)
 		{
-			int requiredBufferSize = 31;
+			int requiredBufferSize = 32*4;
 			for (int j = 0; j < tex.chunks.length; j++)
 			{
-				requiredBufferSize += tex.chunks[0].unpackedLen;
+				requiredBufferSize += tex.chunks[j].unpackedLen;
 			}
 			// collect up all the chunks
 			ByteBuffer dst = ByteBuffer.allocate(requiredBufferSize);
