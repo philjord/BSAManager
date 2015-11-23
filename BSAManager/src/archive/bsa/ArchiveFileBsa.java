@@ -80,6 +80,7 @@ public class ArchiveFileBsa extends ArchiveFile
 	public ArchiveEntry getEntry(String fullFileName)
 	{
 		fullFileName = fullFileName.toLowerCase();
+		fullFileName = fullFileName.trim();
 		if (fullFileName.indexOf("/") != -1)
 		{
 			StringBuilder buildName = new StringBuilder(fullFileName);

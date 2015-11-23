@@ -80,6 +80,7 @@ public class ArchiveFileBtdx extends ArchiveFile
 	public ArchiveEntry getEntry(String fullFileName)
 	{
 		fullFileName = fullFileName.toLowerCase();
+		fullFileName = fullFileName.trim();
 		if (fullFileName.indexOf("/") != -1)
 		{
 			StringBuilder buildName = new StringBuilder(fullFileName);
@@ -108,6 +109,7 @@ public class ArchiveFileBtdx extends ArchiveFile
 			String fileName = fullFileName.substring(pathSep + 1);
 			long fileHashCode = new HashCode(fileName, false).getHash();
 			String bsaFileName = filenameHashToFileNameMap.get(fileHashCode);
+			
 			if (bsaFileName != null)
 			{
 				if (bsaFileName.equals(fileName))
