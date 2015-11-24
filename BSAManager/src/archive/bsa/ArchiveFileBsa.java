@@ -314,7 +314,7 @@ public class ArchiveFileBsa extends ArchiveFile
 				if (bufferIndex >= fileNamesLength)
 					throw new DBException("File names buffer truncated " + file.getAbsolutePath());
 
-				String filename = new String(nameBuffer, startIndex, bufferIndex - startIndex);
+				String filename = new String(nameBuffer, startIndex, bufferIndex - startIndex).trim();
 				fileNames[nameIndex] = filename;
 				//these must be loaded and hashed now as the folder only has the hash values in it
 				filenameHashToFileNameMap.put(new HashCode(filename, false).getHash(), filename);

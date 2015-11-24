@@ -233,7 +233,7 @@ public class ArchiveFileBtdx extends ArchiveFile
 					folderHashToFolderMap.put(folderHash, folder);
 				}
 
-				String fileName = fullFileName.substring(pathSep + 1);
+				String fileName = fullFileName.substring(pathSep + 1).trim();;
 				long fileHashCode = new HashCode(fileName, false).getHash();
 				filenameHashToFileNameMap.put(fileHashCode, fileName);
 
