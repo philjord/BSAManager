@@ -171,6 +171,9 @@ public class ArchiveFileBsa extends ArchiveFile
 
 				String entryFileName = filenameHashToFileNameMap.get(fileHash);
 
+				if (entryFileName == null)
+					System.out.println("entry of null with hash of " + fileHash);
+
 				ArchiveEntry entry = new ArchiveEntry(this, folder.folderName, entryFileName);
 
 				if (version == 104)
@@ -314,7 +317,8 @@ public class ArchiveFileBsa extends ArchiveFile
 				if (bufferIndex >= fileNamesLength)
 					throw new DBException("File names buffer truncated " + file.getAbsolutePath());
 
-				String filename = new String(nameBuffer, startIndex, bufferIndex - startIndex).trim();
+				String filename = new String(nameBuffer, startIndex, bufferIndex - startIndex);
+
 				fileNames[nameIndex] = filename;
 				//these must be loaded and hashed now as the folder only has the hash values in it
 				filenameHashToFileNameMap.put(new HashCode(filename, false).getHash(), filename);
