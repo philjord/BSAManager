@@ -49,6 +49,9 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 		//ddsHeader.ddspf.dwSize = 8*4;//sizeof(DDS_PIXELFORMAT);
 		ddsHeader.dwSurfaceFlags = ddsHeader.DDS_SURFACE_FLAGS_TEXTURE | ddsHeader.DDS_SURFACE_FLAGS_MIPMAP;
 
+		if ( tex.unk16 == 2049 )
+			ddsHeader.dwCubemapFlags = ddsHeader.DDS_CUBEMAP_ALLFACES;
+		
 		boolean ok = true;
 
 		switch (tex.format)
