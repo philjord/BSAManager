@@ -9,9 +9,9 @@ public class ArchiveEntryDX10 extends ArchiveEntry
 
 	public int chunkHdrLen; //  - size of one chunk header
 
-	public int width; // 
-
 	public int height; // 
+	
+	public int width; // 
 
 	public int numMips; // 
 
@@ -40,5 +40,6 @@ public class ArchiveEntryDX10 extends ArchiveEntry
 	{
 		super(archiveFile, folderName, fileName);
 	}
+	//https://github.com/jonwd7/nifskope/commit/2680d9fc33aba8aa300faa850d65b0a3b36eca4a
 
 }

@@ -278,8 +278,8 @@ public class ArchiveFileBtdx extends ArchiveFile
 					// int unk0C= buffer[12]& 0xff; //
 					entry.numChunks = buffer[13] & 0xff; //
 					entry.chunkHdrLen = getShort(buffer, 14); // - size of one chunk header
-					entry.width = getShort(buffer, 16); //
-					entry.height = getShort(buffer, 18); //
+					entry.height = getShort(buffer, 16); //
+					entry.width = getShort(buffer, 18); //					
 					entry.numMips = buffer[20] & 0xff; //
 					entry.format = buffer[21] & 0xff; // - DXGI_FORMAT
 					entry.unk16 = getShort(buffer, 22); // - 0800
