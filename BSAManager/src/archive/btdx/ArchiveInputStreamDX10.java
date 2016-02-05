@@ -112,12 +112,12 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 		//ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
 		case DDS_HEADER.DXGI_FORMAT_B8G8R8A8_UNORM:
 			ddsHeader.ddspf = new DDS_PIXELFORMAT();
-			ddsHeader.ddspf.dwFlags = ddsHeader.DDS_RGBA;
+			ddsHeader.ddspf.dwFlags = ddsHeader.DDS_RGBA;// in fact BGRA!
 			ddsHeader.ddspf.dwRGBBitCount = 32;
 			ddsHeader.ddspf.dwRBitMask = 0x00FF0000;
 			ddsHeader.ddspf.dwGBitMask = 0x0000FF00;
 			ddsHeader.ddspf.dwBBitMask = 0x000000FF;
-			ddsHeader.ddspf.dwABitMask = 0xFF000000;
+			ddsHeader.ddspf.dwABitMask = 0xFF000000; 
 			ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 4; // 32bpp
 			break;
 
