@@ -1,23 +1,15 @@
-package set;
-
-import gui.ArchiveNode;
-import gui.StatusDialog;
+package archive;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import archive.ArchiveEntry;
-import archive.ArchiveFile;
-import archive.DBException;
-import archive.LoadTask;
+ 
 
-public class BSAFileSet extends ArrayList<ArchiveFile>
+public class BSArchiveSet extends ArrayList<ArchiveFile>
 {
-	public ArrayList<LoadTask> loadTasks = new ArrayList<LoadTask>();
-
-	public ArrayList<ArchiveNode> nodes = new ArrayList<ArchiveNode>();
+	public ArrayList<Thread> loadThreads = new ArrayList<Thread>();
 
 	private String name = "";
 
@@ -29,13 +21,12 @@ public class BSAFileSet extends ArrayList<ArchiveFile>
 	 * @param loadNodes set true if you want to add this bsa file set to a tree
 	 * @param sopErrOnly 
 	 */
-	public BSAFileSet(String rootFilename, boolean loadSiblingBsaFiles, boolean loadNodes)
+	public BSArchiveSet(String rootFilename, boolean loadSiblingBsaFiles, boolean loadNodes)
 	{
-		this(new String[]
-		{ rootFilename }, loadSiblingBsaFiles, loadNodes);
+		this(new String[] { rootFilename }, loadSiblingBsaFiles, loadNodes);
 	}
 
-	public BSAFileSet(String[] rootFilenames, boolean loadSiblingBsaFiles, boolean loadNodes)
+	public BSArchiveSet(String[] rootFilenames, boolean loadSiblingBsaFiles, boolean loadNodes)
 	{
 		for (String rootFilename : rootFilenames)
 		{
@@ -71,7 +62,7 @@ public class BSAFileSet extends ArrayList<ArchiveFile>
 			}
 		}
 
-		for (LoadTask loadTask : loadTasks)
+		for (Thread loadTask : loadThreads)
 		{
 			try
 			{
@@ -82,7 +73,7 @@ public class BSAFileSet extends ArrayList<ArchiveFile>
 				e.printStackTrace();
 			}
 		}
-		loadTasks.clear();
+		loadThreads.clear();
 
 		if (this.size() == 0)
 		{
@@ -106,62 +97,28 @@ public class BSAFileSet extends ArrayList<ArchiveFile>
 
 		System.out.println("BSA File Set loading " + file);
 
-		try
-		{
-			ArchiveFile archiveFile = ArchiveFile.createArchiveFile(file);
-
-			try
+		Thread t = new Thread() {
+			public void run()
 			{
-				if (loadNodes)
-				{
-					StatusDialog statusDialog = new StatusDialog(null, "Loading " + archiveFile.getName());
-					ArchiveNode archiveNode = new ArchiveNode(archiveFile);
-
-					LoadTask loadTask = new LoadTask(archiveFile, archiveNode, statusDialog);
-					loadTask.start();
-
-					int status = statusDialog.showDialog();
-
-					loadTask.join();
-					if (status == 1)
-					{
-						add(archiveFile);
-						nodes.add(archiveNode);
-					}
-					else
-					{
-						System.out.println("status != 1 in bsa loader? " + status + " " + file.getAbsolutePath());
-					}
-				}
-				else
-				{
-					LoadTask loadTask = new LoadTask(archiveFile, null);
-					add(archiveFile);
-					loadTask.start();
-					loadTasks.add(loadTask);
-				}
-			}
-			catch (InterruptedException e)
-			{
-				e.printStackTrace();
 				try
 				{
-					archiveFile.close();
+					ArchiveFile archiveFile = ArchiveFile.createArchiveFile(file);
+					archiveFile.load();
+					add(archiveFile);
 				}
-				catch (IOException e2)
+				catch (DBException e1)
 				{
-					e2.printStackTrace();
+					e1.printStackTrace();
+				}
+				catch (IOException e1)
+				{
+					e1.printStackTrace();
 				}
 			}
-		}
-		catch (DBException e1)
-		{
-			e1.printStackTrace();
-		}
-		catch (IOException e1)
-		{
-			e1.printStackTrace();
-		}
+		};
+
+		loadThreads.add(t);
+		t.start();
 
 	}
 
@@ -171,16 +128,14 @@ public class BSAFileSet extends ArrayList<ArchiveFile>
 		{
 			af.close();
 		}
-		nodes.clear();
-
 	}
 
-	public List<ArchiveEntry> getEntries(StatusDialog statusDialog)
+	public List<ArchiveEntry> getEntries()
 	{
 		List<ArchiveEntry> ret = new ArrayList<ArchiveEntry>();
 		for (ArchiveFile af : this)
 		{
-			ret.addAll(af.getEntries(statusDialog));
+			ret.addAll(af.getEntries());
 		}
 		return ret;
 	}

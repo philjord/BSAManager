@@ -1,7 +1,5 @@
 package archive.btdx;
 
-import gui.StatusDialog;
-
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
@@ -42,7 +40,7 @@ public class ArchiveFileBtdx extends ArchiveFile
 	 * 
 	 * @return
 	 */
-	public List<ArchiveEntry> getEntries(StatusDialog statusDialog)
+	public List<ArchiveEntry> getEntries()
 	{
 		ArrayList<ArchiveEntry> ret = new ArrayList<ArchiveEntry>();
 		int filesToLoad = fileCount;
@@ -62,8 +60,7 @@ public class ArchiveFileBtdx extends ArchiveFile
 				if (newProgress >= currentProgress + 5)
 				{
 					currentProgress = newProgress;
-					if (statusDialog != null)
-						statusDialog.updateProgress(currentProgress);
+
 				}
 			}
 
@@ -109,7 +106,7 @@ public class ArchiveFileBtdx extends ArchiveFile
 			String fileName = fullFileName.substring(pathSep + 1);
 			long fileHashCode = new HashCode(fileName, false).getHash();
 			String bsaFileName = filenameHashToFileNameMap.get(fileHashCode);
-			
+
 			if (bsaFileName != null)
 			{
 				if (bsaFileName.equals(fileName))
@@ -233,7 +230,8 @@ public class ArchiveFileBtdx extends ArchiveFile
 					folderHashToFolderMap.put(folderHash, folder);
 				}
 
-				String fileName = fullFileName.substring(pathSep + 1).trim();;
+				String fileName = fullFileName.substring(pathSep + 1).trim();
+				;
 				long fileHashCode = new HashCode(fileName, false).getHash();
 				filenameHashToFileNameMap.put(fileHashCode, fileName);
 

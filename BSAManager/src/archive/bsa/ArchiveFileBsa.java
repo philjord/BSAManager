@@ -1,7 +1,5 @@
 package archive.bsa;
 
-import gui.StatusDialog;
-
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
@@ -42,7 +40,7 @@ public class ArchiveFileBsa extends ArchiveFile
 	 * CAUTION Super HEAVY WEIGHT!!
 	 * @return
 	 */
-	public List<ArchiveEntry> getEntries(StatusDialog statusDialog)
+	public List<ArchiveEntry> getEntries()
 	{
 		ArrayList<ArchiveEntry> ret = new ArrayList<ArchiveEntry>();
 		int filesToLoad = fileCount;
@@ -62,8 +60,7 @@ public class ArchiveFileBsa extends ArchiveFile
 				if (newProgress >= currentProgress + 5)
 				{
 					currentProgress = newProgress;
-					if (statusDialog != null)
-						statusDialog.updateProgress(currentProgress);
+
 				}
 			}
 

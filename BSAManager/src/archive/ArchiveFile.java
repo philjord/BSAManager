@@ -1,7 +1,5 @@
 package archive;
 
-import gui.StatusDialog;
-
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
@@ -86,7 +84,7 @@ public abstract class ArchiveFile
 		return "ArchiveFile:" + file.getPath();
 	}
 
-	public abstract List<ArchiveEntry> getEntries(StatusDialog statusDialog);
+	public abstract List<ArchiveEntry> getEntries();
 
 	public InputStream getInputStream(ArchiveEntry entry) throws IOException
 	{

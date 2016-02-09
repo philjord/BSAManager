@@ -1,7 +1,5 @@
 package archive.tes3;
 
-import gui.StatusDialog;
-
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
@@ -29,7 +27,7 @@ public class ArchiveFileTes3 extends ArchiveFile
 	 * CAUTION Super HEAVY WEIGHT!!
 	 * @return
 	 */
-	public List<ArchiveEntry> getEntries(StatusDialog statusDialog)
+	public List<ArchiveEntry> getEntries()
 	{
 		ArrayList<ArchiveEntry> ret = new ArrayList<ArchiveEntry>();
 		int filesToLoad = fileCount;
@@ -49,8 +47,7 @@ public class ArchiveFileTes3 extends ArchiveFile
 				if (newProgress >= currentProgress + 5)
 				{
 					currentProgress = newProgress;
-					if (statusDialog != null)
-						statusDialog.updateProgress(currentProgress);
+
 				}
 			}
 
@@ -209,7 +206,8 @@ public class ArchiveFileTes3 extends ArchiveFile
 					folderHashToFolderMap.put(folderHash, folder);
 				}
 
-				String fileName = fullFileName.substring(pathSep + 1).trim();;
+				String fileName = fullFileName.substring(pathSep + 1).trim();
+				;
 				long fileHashCode = new HashCode(fileName, false).getHash();
 				filenameHashToFileNameMap.put(fileHashCode, fileName);
 
