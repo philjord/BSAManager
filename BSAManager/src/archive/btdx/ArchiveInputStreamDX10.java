@@ -10,14 +10,14 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
 
-import tools.io.FastByteArrayInputStream;
 import archive.ArchiveEntry;
 import archive.btdx.ArchiveEntryDX10.DX10Chunk;
 import archive.btdx.DDS_HEADER.DDS_HEADER_DXT10;
 import archive.btdx.DDS_HEADER.DDS_PIXELFORMAT;
-
-import com.jcraft.jzlib.Inflater;
+import tools.io.FastByteArrayInputStream;
 
 /**
  * @author philip
@@ -80,20 +80,20 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 
 		case DDS_HEADER.DXGI_FORMAT_BC5_UNORM:
 			//System.out.println(" BC5 " + entry.getFileName());
-			
+
 			ddsHeader.ddspf = ddsHeader.DDSPF_ATI2;
 			ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
 			break;
-			//GL.GL_ATI_texture_compression_3dc
-			//ddsHeader.ddspf = ddsHeader.DDSPF_DXT5;// this works fine and I can't use ATI2			
-			//ddsHeader.ddspf.dwFlags = ddsHeader.DDS_FOURCC;
-			//if (m_useATIFourCC)
-			//	ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('A', 'T', 'I', '2'); // this is more correct but the only thing I have found that supports it is the nvidia photoshop plugin
-			//else
-			//	ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('D', 'X', 'T', '5');
+		//GL.GL_ATI_texture_compression_3dc
+		//ddsHeader.ddspf = ddsHeader.DDSPF_DXT5;// this works fine and I can't use ATI2			
+		//ddsHeader.ddspf.dwFlags = ddsHeader.DDS_FOURCC;
+		//if (m_useATIFourCC)
+		//	ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('A', 'T', 'I', '2'); // this is more correct but the only thing I have found that supports it is the nvidia photoshop plugin
+		//else
+		//	ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('D', 'X', 'T', '5');
 
-			//ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
-			//break;
+		//ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+		//break;
 
 		case DDS_HEADER.DXGI_FORMAT_BC7_UNORM:
 			ddsHeader.ddspf = ddsHeader.DDSPF_DX10;
@@ -117,7 +117,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 			ddsHeader.ddspf.dwRBitMask = 0x00FF0000;
 			ddsHeader.ddspf.dwGBitMask = 0x0000FF00;
 			ddsHeader.ddspf.dwBBitMask = 0x000000FF;
-			ddsHeader.ddspf.dwABitMask = 0xFF000000; 
+			ddsHeader.ddspf.dwABitMask = 0xFF000000;
 			ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 4; // 32bpp
 			break;
 
@@ -192,27 +192,102 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 
 		synchronized (in)
 		{
+			/* All at once results in bad data
+			 int totalPackedLen = 0;
+			int totalUnpackedLen = 0;
+			for (int j = 0; j < tex.chunks.length; j++)
+			{
+				totalPackedLen += tex.chunks[j].packedLen;
+				totalUnpackedLen += tex.chunks[j].unpackedLen;
+			}
+			
+			byte[] srcBuf = new byte[totalPackedLen];
+			int pos = 0;
+			for (int j = 0; j < tex.chunks.length; j++)
+			{
+				DX10Chunk chunk = tex.chunks[j];
+			
+				in.seek(chunk.offset);
+				int c = in.read(srcBuf, pos, chunk.packedLen);
+				if (c < 0)
+					throw new EOFException("Unexpected end of stream while inflating file");
+				pos += chunk.packedLen;
+			}
+			
+			byte[] dstBuf = new byte[totalUnpackedLen];
+			
+			com.jcraft.jzlib.Inflater inflater = new com.jcraft.jzlib.Inflater();
+			inflater.setInput(srcBuf);
+			inflater.setOutput(dstBuf);
+			inflater.inflate(4);//Z_FINISH
+			inflater.end();
+			
+			dst.put(dstBuf, 0, totalUnpackedLen);*/
+
+			//JCraft load near = 22sec
+			/*	for (int j = 0; j < tex.chunks.length; j++)
+			
+			{
+				DX10Chunk chunk = tex.chunks[j];
+			
+				byte[] srcBuf = new byte[chunk.packedLen];
+			
+				in.seek(chunk.offset);
+				int c = in.read(srcBuf, 0, chunk.packedLen);
+				if (c < 0)
+					throw new EOFException("Unexpected end of stream while inflating file");
+			
+				byte[] dstBuf = new byte[chunk.unpackedLen];
+			
+				com.jcraft.jzlib.Inflater inflater = new com.jcraft.jzlib.Inflater();
+				inflater.setInput(srcBuf);
+				inflater.setOutput(dstBuf);
+				inflater.inflate(4);//Z_FINISH
+				inflater.end();
+			
+				dst.put(dstBuf, 0, chunk.unpackedLen);
+			}*/
+
+			// Java straight inflate load near =13sec
+			Inflater inflater = new Inflater();
+			// first one is the biggest, but be careful
+			byte[] dstBuff = new byte[tex.chunks[0].unpackedLen];
+			byte[] srcBuf = new byte[tex.chunks[0].packedLen];
 			for (int j = 0; j < tex.chunks.length; j++)
 			{
 				DX10Chunk chunk = tex.chunks[j];
 
-				byte[] srcBuf = new byte[chunk.packedLen];
+				//byte[] srcBuf = new byte[chunk.packedLen];
 
 				in.seek(chunk.offset);
 				int c = in.read(srcBuf, 0, chunk.packedLen);
 				if (c < 0)
 					throw new EOFException("Unexpected end of stream while inflating file");
 
-				byte[] dstBuf = new byte[chunk.unpackedLen];
+				//byte[] dstBuff = new byte[chunk.unpackedLen];		
+				inflater.reset();
+				inflater.setInput(srcBuf,0,chunk.packedLen);
+				//ByteArrayOutputStream outputStream = new ByteArrayOutputStream(chunk.unpackedLen);
 
-				Inflater inflater = new Inflater();
-				inflater.setInput(srcBuf);
-				inflater.setOutput(dstBuf);
-				inflater.inflate(4);//Z_FINISH
-				inflater.end();
-
-				dst.put(dstBuf, 0, chunk.unpackedLen);
+				try
+				{
+					//while (!inflater.finished())
+					{
+						int count = inflater.inflate(dstBuff);
+						if (count != chunk.unpackedLen)
+							System.err.println("Inflate count issue! " + this);
+						//outputStream.write(b, 0, count);
+					}
+				}
+				catch (DataFormatException e)
+				{
+					e.printStackTrace();
+				}
+				//outputStream.close();
+				//dst.put(outputStream.toByteArray(), 0, chunk.unpackedLen);
+				dst.put(dstBuff, 0, chunk.unpackedLen);
 			}
+
 		}
 
 		this.buf = dst.array();

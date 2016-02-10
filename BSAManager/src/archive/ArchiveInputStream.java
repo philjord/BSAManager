@@ -10,11 +10,13 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
+import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
 
 import tools.io.FastByteArrayInputStream;
 import tools.io.MappedByteBufferRAF;
 
-import com.jcraft.jzlib.Inflater;
+
 
 /**
  * @author philip
@@ -44,11 +46,36 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 					throw new EOFException("Unexpected end of stream while inflating file");
 			}
 
-			Inflater inflater = new Inflater();
+			//JCraft version slower
+			/*com.jcraft.jzlib.Inflater inflater = new com.jcraft.jzlib.Inflater();
 			inflater.setInput(dataBufferIn);
 			inflater.setOutput(dataBufferOut);
 			inflater.inflate(4);//Z_FINISH
-			inflater.end();
+			inflater.end();*/
+			
+
+			 
+
+			 
+			Inflater inflater = new Inflater();
+			inflater.setInput(dataBufferIn );
+			//ByteArrayOutputStream outputStream = new ByteArrayOutputStream(chunk.unpackedLen);
+
+			try
+			{
+				//while (!inflater.finished())
+				{
+					int count = inflater.inflate(dataBufferOut);
+					if (count != entry.getFileLength())
+						System.err.println("Inflate count issue! " + this);
+					//outputStream.write(b, 0, count);
+				}
+			}
+			catch (DataFormatException e)
+			{
+				e.printStackTrace();
+			}
+			//outputStream.close();
 		}
 		else
 		{
