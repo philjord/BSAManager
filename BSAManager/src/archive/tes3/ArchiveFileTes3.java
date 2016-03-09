@@ -27,6 +27,7 @@ public class ArchiveFileTes3 extends ArchiveFile
 	 * CAUTION Super HEAVY WEIGHT!!
 	 * @return
 	 */
+	@Override
 	public List<ArchiveEntry> getEntries()
 	{
 		ArrayList<ArchiveEntry> ret = new ArrayList<ArchiveEntry>();
@@ -61,6 +62,7 @@ public class ArchiveFileTes3 extends ArchiveFile
 
 	}
 
+	@Override
 	public ArchiveEntry getEntry(String fullFileName)
 	{
 		fullFileName = fullFileName.toLowerCase();
@@ -109,11 +111,13 @@ public class ArchiveFileTes3 extends ArchiveFile
 		return null;
 	}
 
+	@Override
 	protected void loadFolder(Folder folder) throws IOException
 	{
 		throw new UnsupportedOperationException("TES3 is loaded at intial load time, so this should never be called");
 	}
 
+	@Override
 	public void load() throws DBException, IOException
 	{
 		//in = new RandomAccessFile(file, "r");
@@ -225,14 +229,28 @@ public class ArchiveFileTes3 extends ArchiveFile
 
 	}
 
+	@Override
 	public boolean hasNifOrKf()
 	{
 		return true;
 	}
 
+	@Override
 	public boolean hasDDS()
 	{
 		return true;
+	}
+
+	@Override
+	public boolean hasKTX()
+	{
+		return false;
+	}
+
+	@Override
+	public boolean hasASTC()
+	{
+		return false;
 	}
 
 	public boolean hasSounds()

@@ -229,6 +229,10 @@ public abstract class ArchiveFile
 
 	public abstract boolean hasDDS();
 
+	public abstract boolean hasKTX();
+	
+	public abstract boolean hasASTC();
+
 	public abstract boolean hasSounds();
 
 	protected static int getShort(byte buffer[], int offset)
@@ -248,5 +252,7 @@ public abstract class ArchiveFile
 				| (buffer[offset + 3] & 255L) << 24 | (buffer[offset + 4] & 255L) << 32 | (buffer[offset + 5] & 255L) << 40
 				| (buffer[offset + 6] & 255L) << 48 | (buffer[offset + 7] & 255L) << 56;
 	}
+
+	
 
 }

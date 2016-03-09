@@ -3,6 +3,7 @@ package archive.bsa;
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,6 +24,10 @@ public class ArchiveFileBsa extends ArchiveFile
 	private boolean isCompressed;
 
 	private boolean defaultCompressed;
+
+	private boolean hasKTXFiles = false;
+
+	private boolean hasASTCFiles = false;
 
 	private Map<Long, String> filenameHashToFileNameMap;
 
@@ -250,8 +255,15 @@ public class ArchiveFileBsa extends ArchiveFile
 
 	public void load() throws DBException, IOException
 	{
-		//in = new RandomAccessFile(file, "r");
-		in = new MappedByteBufferRAF(file, "r");
+		//TODO: support large files with 2 maps
+		if (file.length() < Integer.MAX_VALUE)
+		{
+			in = new MappedByteBufferRAF(file, "r");
+		}
+		else
+		{
+			in = new RandomAccessFile(file, "r");
+		}
 
 		// lock just in case anyone else tries an early read
 		synchronized (in)
@@ -320,6 +332,10 @@ public class ArchiveFileBsa extends ArchiveFile
 				//these must be loaded and hashed now as the folder only has the hash values in it
 				filenameHashToFileNameMap.put(new HashCode(filename, false).getHash(), filename);
 
+				hasKTXFiles = hasKTXFiles || filename.endsWith("ktx");
+
+				hasASTCFiles = hasASTCFiles || filename.endsWith("astc");
+
 				bufferIndex++;
 			}
 
@@ -357,6 +373,16 @@ public class ArchiveFileBsa extends ArchiveFile
 	public boolean hasDDS()
 	{
 		return (fileFlags & 2) != 0;
+	}
+
+	public boolean hasKTX()
+	{
+		return hasKTXFiles;
+	}
+
+	public boolean hasASTC()
+	{
+		return hasASTCFiles;
 	}
 
 	public boolean hasSounds()

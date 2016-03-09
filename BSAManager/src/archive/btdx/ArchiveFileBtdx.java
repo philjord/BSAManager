@@ -40,6 +40,7 @@ public class ArchiveFileBtdx extends ArchiveFile
 	 * 
 	 * @return
 	 */
+	@Override
 	public List<ArchiveEntry> getEntries()
 	{
 		ArrayList<ArchiveEntry> ret = new ArrayList<ArchiveEntry>();
@@ -74,6 +75,7 @@ public class ArchiveFileBtdx extends ArchiveFile
 
 	}
 
+	@Override
 	public ArchiveEntry getEntry(String fullFileName)
 	{
 		fullFileName = fullFileName.toLowerCase();
@@ -123,11 +125,13 @@ public class ArchiveFileBtdx extends ArchiveFile
 		return null;
 	}
 
+	@Override
 	protected void loadFolder(Folder folder) throws IOException
 	{
 		throw new UnsupportedOperationException("BTDX is loaded at intial load time, so this should never be called");
 	}
 
+	@Override
 	public InputStream getInputStream(ArchiveEntry entry) throws IOException
 	{
 		if (in == null)
@@ -147,6 +151,7 @@ public class ArchiveFileBtdx extends ArchiveFile
 		}
 	}
 
+	@Override
 	public void load() throws DBException, IOException
 	{
 		if (file.length() > Integer.MAX_VALUE)
@@ -311,19 +316,34 @@ public class ArchiveFileBtdx extends ArchiveFile
 
 	}
 
+	@Override
 	public boolean hasNifOrKf()
 	{
 		return bsaFileType == BsaFileType.GNRL;
 	}
 
+	@Override
 	public boolean hasDDS()
 	{
 		return bsaFileType == BsaFileType.DX10;
 	}
 
+	@Override
 	public boolean hasSounds()
 	{
 		return bsaFileType == BsaFileType.GNRL;
+	}
+
+	@Override
+	public boolean hasKTX()
+	{
+		return false;
+	}
+
+	@Override
+	public boolean hasASTC()
+	{
+		return false;
 	}
 
 }
