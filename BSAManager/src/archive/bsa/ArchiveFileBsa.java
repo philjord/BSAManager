@@ -256,14 +256,10 @@ public class ArchiveFileBsa extends ArchiveFile
 	public void load() throws DBException, IOException
 	{
 		//TODO: support large files with 2 maps
-		if (file.length() < Integer.MAX_VALUE)
-		{
-			in = new MappedByteBufferRAF(file, "r");
-		}
-		else
-		{
+		if (file.length() > Integer.MAX_VALUE || !USE_FILE_MAPS)
 			in = new RandomAccessFile(file, "r");
-		}
+		else
+			in = new MappedByteBufferRAF(file, "r");
 
 		// lock just in case anyone else tries an early read
 		synchronized (in)

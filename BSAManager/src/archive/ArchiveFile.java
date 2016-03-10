@@ -11,6 +11,9 @@ import java.util.Map;
 
 public abstract class ArchiveFile
 {
+
+	public static boolean USE_FILE_MAPS = true;
+
 	public enum SIG
 	{
 		TES3, BSA, BTDX
@@ -230,7 +233,7 @@ public abstract class ArchiveFile
 	public abstract boolean hasDDS();
 
 	public abstract boolean hasKTX();
-	
+
 	public abstract boolean hasASTC();
 
 	public abstract boolean hasSounds();
@@ -252,7 +255,5 @@ public abstract class ArchiveFile
 				| (buffer[offset + 3] & 255L) << 24 | (buffer[offset + 4] & 255L) << 32 | (buffer[offset + 5] & 255L) << 40
 				| (buffer[offset + 6] & 255L) << 48 | (buffer[offset + 7] & 255L) << 56;
 	}
-
-	
 
 }

@@ -3,6 +3,7 @@ package archive.tes3;
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -120,8 +121,10 @@ public class ArchiveFileTes3 extends ArchiveFile
 	@Override
 	public void load() throws DBException, IOException
 	{
-		//in = new RandomAccessFile(file, "r");
-		in = new MappedByteBufferRAF(file, "r");
+		if (file.length() > Integer.MAX_VALUE || !USE_FILE_MAPS)
+			in = new RandomAccessFile(file, "r");
+		else
+			in = new MappedByteBufferRAF(file, "r");
 
 		// lock just in case anyone else tries an early read
 		synchronized (in)

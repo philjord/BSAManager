@@ -154,10 +154,10 @@ public class ArchiveFileBtdx extends ArchiveFile
 	@Override
 	public void load() throws DBException, IOException
 	{
-		if (file.length() > Integer.MAX_VALUE)
+		if (file.length() > Integer.MAX_VALUE || !USE_FILE_MAPS)
 			in = new RandomAccessFile(file, "r");
 		else
-			in = new MappedByteBufferRAF(file, "r"); // we exceed an int!! new fallout4 gear!
+			in = new MappedByteBufferRAF(file, "r");
 
 		// lock just in case anyone else tries an early read
 		synchronized (in)
