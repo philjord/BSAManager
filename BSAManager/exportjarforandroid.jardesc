@@ -11,9 +11,6 @@
         </sealing>
     </manifest>
     <selectedElements exportClassFiles="true" exportJavaFiles="false" exportOutputFolder="false">
-        <javaElement handleIdentifier="=BSAManager/src&lt;archive.bsa"/>
-        <javaElement handleIdentifier="=BSAManager/src&lt;archive.btdx"/>
-        <javaElement handleIdentifier="=BSAManager/src&lt;archive"/>
-        <javaElement handleIdentifier="=BSAManager/src&lt;archive.tes3"/>
+        <javaElement handleIdentifier="=BSAManager/src"/>
     </selectedElements>
 </jardesc>

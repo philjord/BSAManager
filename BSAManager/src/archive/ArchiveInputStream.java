@@ -10,13 +10,12 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
 import tools.io.FastByteArrayInputStream;
 import tools.io.MappedByteBufferRAF;
-
-
 
 /**
  * @author philip
@@ -26,11 +25,11 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 {
 	public ArchiveInputStream(RandomAccessFile in, ArchiveEntry entry) throws IOException
 	{
-		super(new byte[0]);//reset below once data is availble
+		super(new byte[0]);//reset below once data is available
 
 		byte[] dataBufferOut = new byte[entry.getFileLength()];
 
-		//the deflate doesn't accept a bytebuffer
+		//the inflate doesn't accept a bytebuffer
 		boolean isCompressed = entry.isCompressed();
 		if (isCompressed && entry.getFileLength() > 0)
 		{
@@ -38,53 +37,78 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 			int compressedLength = entry.getCompressedLength();
 			byte[] dataBufferIn = new byte[compressedLength];
 
-			synchronized (in)
+			//android can't take big files
+			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE)
 			{
-				in.seek(entry.getFileOffset());
-				int c = in.read(dataBufferIn, 0, compressedLength);
-				if (c < 0)
-					throw new EOFException("Unexpected end of stream while inflating file");
+				FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
+				FileChannel ch = in.getChannel();
+				MappedByteBuffer mappedByteBuffer = ch.map(mm, entry.getFileOffset(), compressedLength);
+				mappedByteBuffer.get(dataBufferIn, 0, compressedLength);
 			}
-
-			//JCraft version slower
-			/*com.jcraft.jzlib.Inflater inflater = new com.jcraft.jzlib.Inflater();
-			inflater.setInput(dataBufferIn);
-			inflater.setOutput(dataBufferOut);
-			inflater.inflate(4);//Z_FINISH
-			inflater.end();*/
-			
-
-			 
-
-			 
-			Inflater inflater = new Inflater();
-			inflater.setInput(dataBufferIn );
-			//ByteArrayOutputStream outputStream = new ByteArrayOutputStream(chunk.unpackedLen);
-
-			try
+			else
 			{
-				//while (!inflater.finished())
+				synchronized (in)
 				{
-					int count = inflater.inflate(dataBufferOut);
-					if (count != entry.getFileLength())
-						System.err.println("Inflate count issue! " + this);
-					//outputStream.write(b, 0, count);
+					in.seek(entry.getFileOffset());
+					int c = in.read(dataBufferIn, 0, compressedLength);
+					if (c < 0)
+						throw new EOFException("Unexpected end of stream while inflating file");
 				}
+
 			}
-			catch (DataFormatException e)
+
+			if (ArchiveFile.USE_NON_NATIVE_ZIP)
 			{
-				e.printStackTrace();
+				//JCraft version slower - though I wonder about android? seems real slow too
+				com.jcraft.jzlib.Inflater inflater = new com.jcraft.jzlib.Inflater();
+				inflater.setInput(dataBufferIn);
+				inflater.setOutput(dataBufferOut);
+				inflater.inflate(4);//Z_FINISH
+				inflater.end();
 			}
-			//outputStream.close();
+			else
+			{
+
+				Inflater inflater = new Inflater();
+				inflater.setInput(dataBufferIn);
+				//ByteArrayOutputStream outputStream = new ByteArrayOutputStream(chunk.unpackedLen);
+
+				try
+				{
+					//while (!inflater.finished())
+					{
+						int count = inflater.inflate(dataBufferOut);
+						if (count != entry.getFileLength())
+							System.err.println("Inflate count issue! " + this);
+						//outputStream.write(b, 0, count);
+					}
+				}
+				catch (DataFormatException e)
+				{
+					e.printStackTrace();
+				}
+				//outputStream.close();
+			}
 		}
 		else
 		{
-			synchronized (in)
+
+			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE)
 			{
-				in.seek(entry.getFileOffset());
-				int c = in.read(dataBufferOut, 0, entry.getFileLength());
-				if (c < 0)
-					throw new EOFException("Unexpected end of stream while inflating file");
+				FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
+				FileChannel ch = in.getChannel();
+				MappedByteBuffer mappedByteBuffer = ch.map(mm, entry.getFileOffset(), entry.getFileLength());
+				mappedByteBuffer.get(dataBufferOut, 0, entry.getFileLength());
+			}
+			else
+			{
+				synchronized (in)
+				{
+					in.seek(entry.getFileOffset());
+					int c = in.read(dataBufferOut, 0, entry.getFileLength());
+					if (c < 0)
+						throw new EOFException("Unexpected end of stream while inflating file");
+				}
 			}
 		}
 

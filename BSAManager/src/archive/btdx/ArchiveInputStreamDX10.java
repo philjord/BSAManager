@@ -10,10 +10,13 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
 import archive.ArchiveEntry;
+import archive.ArchiveFile;
 import archive.btdx.ArchiveEntryDX10.DX10Chunk;
 import archive.btdx.DDS_HEADER.DDS_HEADER_DXT10;
 import archive.btdx.DDS_HEADER.DDS_PIXELFORMAT;
@@ -258,15 +261,23 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 				DX10Chunk chunk = tex.chunks[j];
 
 				//byte[] srcBuf = new byte[chunk.packedLen];
-
-				in.seek(chunk.offset);
-				int c = in.read(srcBuf, 0, chunk.packedLen);
-				if (c < 0)
-					throw new EOFException("Unexpected end of stream while inflating file");
-
+				if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE)
+				{
+					FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
+					FileChannel ch = in.getChannel();
+					MappedByteBuffer mappedByteBuffer = ch.map(mm, chunk.offset, chunk.packedLen);
+					mappedByteBuffer.get(srcBuf, 0, chunk.packedLen);
+				}
+				else
+				{
+					in.seek(chunk.offset);
+					int c = in.read(srcBuf, 0, chunk.packedLen);
+					if (c < 0)
+						throw new EOFException("Unexpected end of stream while inflating file");
+				}
 				//byte[] dstBuff = new byte[chunk.unpackedLen];		
 				inflater.reset();
-				inflater.setInput(srcBuf,0,chunk.packedLen);
+				inflater.setInput(srcBuf, 0, chunk.packedLen);
 				//ByteArrayOutputStream outputStream = new ByteArrayOutputStream(chunk.unpackedLen);
 
 				try
@@ -286,8 +297,8 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 				//outputStream.close();
 				//dst.put(outputStream.toByteArray(), 0, chunk.unpackedLen);
 				dst.put(dstBuff, 0, chunk.unpackedLen);
-			}
 
+			}
 		}
 
 		this.buf = dst.array();
