@@ -14,11 +14,11 @@ public class ArchiveEntry implements Comparable<ArchiveEntry>
 
 	private int archiveIdentifier;
 
-	private String folderName;
+	private String folderName;//do I need this? only wanted by the display gear
 
-	private HashCode folderHashCode;
+	private HashCode folderHashCode; 
 
-	private String fileName;
+	private String fileName;//do I need this? only wanted by the display gear
 
 	private HashCode fileHashCode;
 
@@ -154,7 +154,7 @@ public class ArchiveEntry implements Comparable<ArchiveEntry>
 
 	public int getIdentifier()
 	{
-		return archiveIdentifier;
+		return archiveIdentifier;// this is the hash of the archive file, not really important, just a double check
 	}
 
 	public void setIdentifier(int identifier)

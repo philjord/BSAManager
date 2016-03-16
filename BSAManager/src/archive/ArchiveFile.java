@@ -14,8 +14,8 @@ public abstract class ArchiveFile
 
 	public static boolean USE_FILE_MAPS = true;
 	//TODO: with this idea and read only I can multithread access to bsa files now
-	public static boolean USE_MINI_CHANNEL_MAPS = false;//requires ArchiveFile.USE_FILE_MAPS = false;
-	public static boolean USE_NON_NATIVE_ZIP = false;
+	public static boolean USE_MINI_CHANNEL_MAPS = false;//true requires ArchiveFile.USE_FILE_MAPS = false;
+	public static boolean USE_NON_NATIVE_ZIP = false;// true=slower but no native calls
 
 	public enum SIG
 	{
@@ -38,6 +38,7 @@ public abstract class ArchiveFile
 
 	public class Folder
 	{
+		// do I need the folder name ever?
 		public String folderName = "";
 
 		public int folderFileCount = 0;
@@ -103,7 +104,7 @@ public abstract class ArchiveFile
 	}
 
 	/**
-	 * You probably don't want this method!
+	 * You probably don't want this method! unless you are doing Nif files
 	 * Be VERY careful, handing mappedbytebuffers to openGL via the addChild call will push disk access
 	 * onto the j3d thread, a very bad idea.
 	 * @param entry
@@ -115,9 +116,7 @@ public abstract class ArchiveFile
 		if (in == null)
 			throw new IOException("Archive file is not open");
 		else if (entry.getIdentifier() != hashCode())
-			throw new IllegalArgumentException("Archive entry not valid for this archive");
-		else if (entry.isCompressed())
-			throw new IOException("Archive entry isCompressed, can't return a bytebuffer " + entry.getFileName());
+			throw new IllegalArgumentException("Archive entry not valid for this archive");		
 		else
 			return ArchiveInputStream.getByteBuffer(in, entry);
 

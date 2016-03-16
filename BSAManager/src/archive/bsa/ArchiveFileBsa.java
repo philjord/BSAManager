@@ -29,6 +29,8 @@ public class ArchiveFileBsa extends ArchiveFile
 
 	private boolean hasASTCFiles = false;
 
+	
+	//I don't need the file name, it should never be given out, just used as a look up
 	private Map<Long, String> filenameHashToFileNameMap;
 
 	public ArchiveFileBsa(File file)
