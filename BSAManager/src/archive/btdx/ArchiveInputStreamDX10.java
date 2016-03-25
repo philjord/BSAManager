@@ -253,12 +253,18 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 
 			// Java straight inflate load near =13sec
 			Inflater inflater = new Inflater();
-			// first one is the biggest, but be careful
+			// each chunk can have any number of mips in it, so later one could be bigger than earlier!
 			byte[] dstBuff = new byte[tex.chunks[0].unpackedLen];
 			byte[] srcBuf = new byte[tex.chunks[0].packedLen];
 			for (int j = 0; j < tex.chunks.length; j++)
 			{
 				DX10Chunk chunk = tex.chunks[j];
+
+				if (chunk.packedLen > srcBuf.length)
+					srcBuf = new byte[chunk.packedLen];
+
+				if (chunk.unpackedLen > dstBuff.length)
+					dstBuff = new byte[chunk.unpackedLen];
 
 				//byte[] srcBuf = new byte[chunk.packedLen];
 				if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE)
@@ -266,7 +272,9 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 					FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
 					FileChannel ch = in.getChannel();
 					MappedByteBuffer mappedByteBuffer = ch.map(mm, chunk.offset, chunk.packedLen);
+
 					mappedByteBuffer.get(srcBuf, 0, chunk.packedLen);
+
 				}
 				else
 				{
