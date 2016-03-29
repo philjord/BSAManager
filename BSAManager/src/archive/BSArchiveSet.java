@@ -116,6 +116,7 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 				}
 			}
 		};
+		t.setName("BSArchiveSet ArchiveFile Loader");
 
 		loadThreads.add(t);
 		t.start();
