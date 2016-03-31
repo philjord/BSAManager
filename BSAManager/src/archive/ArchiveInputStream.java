@@ -15,7 +15,6 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
 import tools.io.FastByteArrayInputStream;
-import tools.io.MappedByteBufferRAF;
 
 /**
  * @author philip
@@ -26,6 +25,10 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 	public ArchiveInputStream(RandomAccessFile in, ArchiveEntry entry) throws IOException
 	{
 		super(new byte[0]);//reset below once data is available
+
+		// not sure why this is bad, something weird with defaultcompressed flag the the archive load up
+		if (entry.getFileLength() == 0)
+			entry.setFileLength(entry.getCompressedLength());
 
 		byte[] dataBufferOut = new byte[entry.getFileLength()];
 
