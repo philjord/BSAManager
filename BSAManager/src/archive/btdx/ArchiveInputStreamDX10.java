@@ -1,8 +1,3 @@
-// Decompiled by DJ v3.6.6.79 Copyright 2004 Atanas Neshkov  Date: 5/27/2009 3:52:54 PM
-// Home Page : http://members.fortunecity.com/neshkov/dj.html  - Check often for new version!
-// Decompiler options: packimports(3) 
-// Source File Name:   ArchiveInputStream.java
-
 package archive.btdx;
 
 import java.io.EOFException;
@@ -102,7 +97,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 			ddsHeader.ddspf = ddsHeader.DDSPF_DX10;
 			ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
 			// NOT seen yet
-			System.out.println("dx10 fourCC!!!!!!!!!!!!!!!!!!!!!!!!!! " + ddsHeader.ddspf.dwFourCC + " " + entry.getFileName());
+			System.out.println("dx10 fourCC!!!!!!!!!!!!!!!!!!!!!!!!!! " + ddsHeader.ddspf.dwFourCC + " " + entry);
 			dx10 = true;
 			dx10Header.dxgiFormat = DDS_HEADER.DXGI_FORMAT_BC7_UNORM;
 			break;
@@ -133,7 +128,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 			break;
 
 		default:
-			System.err.println("unhandled format %02X (%d) (%s) " + tex.format + " " + tex.getFileName());
+			System.err.println("unhandled format %02X (%d) (%s) " + tex.format + " " + tex);
 			return;
 		}
 

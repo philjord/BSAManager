@@ -38,19 +38,46 @@ public abstract class ArchiveFile
 
 	public class Folder
 	{
-		// do I need the folder name ever?
-		public String folderName = "";
+		public String folderName = "";// need for get folder files
 
 		public int folderFileCount = 0;
 
 		public long offset = -1;
 
+		private boolean isForDisplay = false;
+
 		public Map<Long, ArchiveEntry> fileToHashMap;
 
-		public Folder(int folderFileCount, long offset)
+		public Folder(int folderFileCount, long offset, boolean isForDisplay)
 		{
 			this.folderFileCount = folderFileCount;
 			this.offset = offset;
+			this.isForDisplay = isForDisplay;
+		}
+
+		public String getFolderName()
+		{
+			return folderName;
+		}
+
+		public int getFolderFileCount()
+		{
+			return folderFileCount;
+		}
+
+		public long getOffset()
+		{
+			return offset;
+		}
+
+		public boolean isForDisplay()
+		{
+			return isForDisplay;
+		}
+
+		public Map<Long, ArchiveEntry> getFileToHashMap()
+		{
+			return fileToHashMap;
 		}
 
 		public String toString()
@@ -96,11 +123,11 @@ public abstract class ArchiveFile
 	public InputStream getInputStream(ArchiveEntry entry) throws IOException
 	{
 		if (in == null)
+		{
 			throw new IOException("Archive file is not open");
-		else if (entry.getIdentifier() != hashCode())
-			throw new IllegalArgumentException("Archive entry not valid for this archive");
-		else
-			return new ArchiveInputStream(in, entry);
+		}
+
+		return new ArchiveInputStream(in, entry);
 	}
 
 	/**
@@ -114,11 +141,11 @@ public abstract class ArchiveFile
 	public ByteBuffer getByteBuffer(ArchiveEntry entry) throws IOException
 	{
 		if (in == null)
+		{
 			throw new IOException("Archive file is not open");
-		else if (entry.getIdentifier() != hashCode())
-			throw new IllegalArgumentException("Archive entry not valid for this archive");		
-		else
-			return ArchiveInputStream.getByteBuffer(in, entry);
+		}
+
+		return ArchiveInputStream.getByteBuffer(in, entry);
 
 	}
 
@@ -131,7 +158,8 @@ public abstract class ArchiveFile
 		}
 	}
 
-	public Folder getFolder(String folderName)
+	//Notice isFroDisplay unused here due to trouble with other sorts of ArchiveFile
+	public Folder getFolder(String folderName, boolean isForDisplay)
 	{
 
 		StringBuilder buildName = new StringBuilder(folderName.toLowerCase());
@@ -228,7 +256,7 @@ public abstract class ArchiveFile
 		}
 	}
 
-	public abstract void load() throws DBException, IOException;
+	public abstract void load(boolean isForDisplay) throws DBException, IOException;
 
 	public abstract boolean hasNifOrKf();
 

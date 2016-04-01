@@ -1,28 +1,15 @@
-// Decompiled by DJ v3.6.6.79 Copyright 2004 Atanas Neshkov  Date: 5/27/2009 3:52:54 PM
-// Home Page : http://members.fortunecity.com/neshkov/dj.html  - Check often for new version!
-// Decompiler options: packimports(3) 
-// Source File Name:   ArchiveEntry.java
-
 package archive;
-
-// Referenced classes of package FO3Archive:
-//            HashCode
 
 public class ArchiveEntry implements Comparable<ArchiveEntry>
 {
-	private ArchiveFile archiveFile;
+	//TODO: this should be in the Displayable version
+	// only needed in order to   getFilesInFolder(String folderName)  from MeshSource interface
+	// however I can't easily reload Ba2 and tes3 archives by folder so it's here for now
+	protected String fileName;
 
-	private int archiveIdentifier;
-
-	private String folderName;//do I need this? only wanted by the display gear
-
-	private HashCode folderHashCode; 
-
-	private String fileName;//do I need this? only wanted by the display gear
+	private HashCode folderHashCode;
 
 	private HashCode fileHashCode;
-
-	private String entryName;
 
 	private long fileOffset;
 
@@ -34,52 +21,32 @@ public class ArchiveEntry implements Comparable<ArchiveEntry>
 
 	public ArchiveEntry(ArchiveFile archiveFile, String folderName, String fileName)
 	{
-		this.archiveFile = archiveFile;
 		if (folderName == null || fileName == null)
 		{
 			throw new IllegalArgumentException("Folder name or file name is null " + folderName + " : " + fileName);
 		}
 		else if (folderName.length() > 254)
 		{
-			throw new IllegalArgumentException("Folder name is longer than 254 characters");
+			throw new IllegalArgumentException("Folder name is longer than 254 characters " + folderName);
 		}
 		else if (fileName.length() > 254)
 		{
-			throw new IllegalArgumentException("File name is longer than 254 characters");
+			throw new IllegalArgumentException("File name is longer than 254 characters " + fileName);
 		}
-		else
-		{
-			this.folderName = folderName;
-			this.fileName = fileName;
-			entryName = (new StringBuilder()).append(folderName).append("\\").append(fileName).toString();
-			folderHashCode = new HashCode(folderName, true);
-			fileHashCode = new HashCode(fileName, false);
-		}
+
+		this.fileName = fileName;
+		folderHashCode = new HashCode(folderName, true);
+		fileHashCode = new HashCode(fileName, false);
 	}
 
-	public String getName()
+	public void setFolderName(String folderName)
 	{
-		return entryName;
-	}
-
-	public String getFolderName()
-	{
-		return folderName;
-	}
-
-	public void setFolderName(String name)
-	{
-		if (name.length() > 254)
+		if (folderName.length() > 254)
 		{
-			throw new IllegalArgumentException("Folder name is longer than 254 characters");
+			throw new IllegalArgumentException("Folder name is longer than 254 characters " + folderName);
 		}
-		else
-		{
-			folderName = name;
-			folderHashCode = new HashCode(folderName, true);
-			entryName = (new StringBuilder()).append(folderName).append("\\").append(fileName).toString();
-			return;
-		}
+
+		folderHashCode = new HashCode(folderName, true);
 	}
 
 	public HashCode getFolderHashCode()
@@ -92,19 +59,15 @@ public class ArchiveEntry implements Comparable<ArchiveEntry>
 		return fileName;
 	}
 
-	public void setFileName(String name)
+	public void setFileName(String fileName)
 	{
-		if (name.length() > 254)
+		if (fileName.length() > 254)
 		{
-			throw new IllegalArgumentException("File name is longer than 254 characters");
+			throw new IllegalArgumentException("File name is longer than 254 characters " + fileName);
 		}
-		else
-		{
-			fileName = name;
-			fileHashCode = new HashCode(fileName, false);
-			entryName = (new StringBuilder()).append(folderName).append("\\").append(fileName).toString();
-			return;
-		}
+		this.fileName = fileName;
+		fileHashCode = new HashCode(fileName, false);
+
 	}
 
 	public HashCode getFileHashCode()
@@ -152,16 +115,6 @@ public class ArchiveEntry implements Comparable<ArchiveEntry>
 		compressedLength = length;
 	}
 
-	public int getIdentifier()
-	{
-		return archiveIdentifier;// this is the hash of the archive file, not really important, just a double check
-	}
-
-	public void setIdentifier(int identifier)
-	{
-		archiveIdentifier = identifier;
-	}
-
 	public boolean equals(Object obj)
 	{
 		boolean equal = false;
@@ -184,12 +137,7 @@ public class ArchiveEntry implements Comparable<ArchiveEntry>
 
 	public String toString()
 	{
-		return entryName;
-	}
-
-	public ArchiveFile getArchiveFile()
-	{
-		return archiveFile;
+		return "ArchiveEntry " + folderHashCode + " " + fileHashCode;
 	}
 
 }

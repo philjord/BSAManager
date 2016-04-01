@@ -14,6 +14,7 @@ import archive.ArchiveEntry;
 import archive.ArchiveFile;
 import archive.DBException;
 import archive.HashCode;
+import archive.displayables.DisplayableArchiveEntry;
 
 public class ArchiveFileBsa extends ArchiveFile
 {
@@ -29,7 +30,8 @@ public class ArchiveFileBsa extends ArchiveFile
 
 	private boolean hasASTCFiles = false;
 
-	
+	private boolean isForDisplay = false;
+
 	//I don't need the file name, it should never be given out, just used as a look up
 	private Map<Long, String> filenameHashToFileNameMap;
 
@@ -173,12 +175,16 @@ public class ArchiveFileBsa extends ArchiveFile
 				int dataLength = getInteger(buffer, 8);
 				long dataOffset = getInteger(buffer, 12) & 0xffffffffL;
 
-				String entryFileName = filenameHashToFileNameMap.get(fileHash);
+				String fileName = filenameHashToFileNameMap.get(fileHash);
 
-				if (entryFileName == null)
+				if (fileName == null)
 					System.out.println("entry of null with hash of " + fileHash);
 
-				ArchiveEntry entry = new ArchiveEntry(this, folder.folderName, entryFileName);
+				ArchiveEntry entry;
+				if (isForDisplay)
+					entry = new DisplayableArchiveEntry(this, folder.folderName, fileName);
+				else
+					entry = new ArchiveEntry(this, folder.folderName, fileName);
 
 				if (version == 104)
 				{
@@ -208,7 +214,6 @@ public class ArchiveFileBsa extends ArchiveFile
 						dataLength = getInteger(buffer, 0);
 					}
 
-					entry.setIdentifier(hashCode());
 					entry.setFileOffset(dataOffset);
 					entry.setFileLength(dataLength);
 					entry.setCompressed(isCompressed);
@@ -238,11 +243,10 @@ public class ArchiveFileBsa extends ArchiveFile
 							throw new EOFException("Compressed data is incomplete");
 						unCompressedLength = getInteger(buffer, 0);
 
-						dataOffset += 4L; // move past teh uncompressed size into compressed data pointer
+						dataOffset += 4L; // move past the uncompressed size into compressed data pointer
 						dataLength -= 4; // compressed size has uncompressed size int taken off						
 					}
 
-					entry.setIdentifier(hashCode());
 					entry.setFileOffset(dataOffset);
 					entry.setFileLength(unCompressedLength); //different to 104				
 					entry.setCompressed(compressed); //different to 104
@@ -255,13 +259,15 @@ public class ArchiveFileBsa extends ArchiveFile
 
 	}
 
-	public void load() throws DBException, IOException
+	public void load(boolean isForDisplay) throws DBException, IOException
 	{
 		//TODO: support large files with 2 maps
 		if (file.length() > Integer.MAX_VALUE || !USE_FILE_MAPS)
 			in = new RandomAccessFile(file, "r");
 		else
 			in = new MappedByteBufferRAF(file, "r");
+
+		this.isForDisplay = isForDisplay;
 
 		// lock just in case anyone else tries an early read
 		synchronized (in)
@@ -355,7 +361,7 @@ public class ArchiveFileBsa extends ArchiveFile
 				int folderFileCount = getInteger(buffer, 8);
 				long fileOffset = (getInteger(buffer, 12) - fileNamesLength) & 0xffffffffL;
 
-				folderHashToFolderMap.put(folderHash, new Folder(folderFileCount, fileOffset));
+				folderHashToFolderMap.put(folderHash, new Folder(folderFileCount, fileOffset, isForDisplay));
 
 			}
 

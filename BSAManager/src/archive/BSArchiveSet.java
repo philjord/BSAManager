@@ -103,7 +103,7 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 				try
 				{
 					ArchiveFile archiveFile = ArchiveFile.createArchiveFile(file);
-					archiveFile.load();
+					archiveFile.load(false);
 					add(archiveFile);
 				}
 				catch (DBException e1)

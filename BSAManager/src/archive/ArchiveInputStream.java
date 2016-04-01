@@ -129,6 +129,11 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 	 */
 	public static ByteBuffer getByteBuffer(RandomAccessFile in, ArchiveEntry entry) throws IOException
 	{
+
+		// not sure why this is bad, something weird with defaultcompressed flag the the archive load up
+		if (entry.getFileLength() == 0)
+			entry.setFileLength(entry.getCompressedLength());
+
 		byte[] dataBufferOut = new byte[entry.getFileLength()];
 
 		//the inflate doesn't accept a bytebuffer

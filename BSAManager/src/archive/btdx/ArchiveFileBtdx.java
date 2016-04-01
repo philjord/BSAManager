@@ -10,13 +10,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import tools.io.MappedByteBufferRAF;
 import archive.ArchiveEntry;
 import archive.ArchiveFile;
 import archive.ArchiveInputStream;
 import archive.DBException;
 import archive.HashCode;
 import archive.btdx.ArchiveEntryDX10.DX10Chunk;
+import archive.displayables.DisplayableArchiveEntry;
+import archive.displayables.DisplayableArchiveEntryDX10;
+import tools.io.MappedByteBufferRAF;
 
 public class ArchiveFileBtdx extends ArchiveFile
 {
@@ -128,31 +130,29 @@ public class ArchiveFileBtdx extends ArchiveFile
 	@Override
 	protected void loadFolder(Folder folder) throws IOException
 	{
-		throw new UnsupportedOperationException("BTDX is loaded at intial load time, so this should never be called");
+		throw new UnsupportedOperationException("BTDX is loaded at inital load time, so this should never be called");
 	}
 
 	@Override
 	public InputStream getInputStream(ArchiveEntry entry) throws IOException
 	{
 		if (in == null)
+		{
 			throw new IOException("Archive file is not open");
-		else if (entry.getIdentifier() != hashCode())
-			throw new IllegalArgumentException("Archive entry not valid for this archive");
+		}
+
+		if (bsaFileType == BsaFileType.DX10)
+		{
+			return new ArchiveInputStreamDX10(in, entry);
+		}
 		else
 		{
-			if (bsaFileType == BsaFileType.DX10)
-			{
-				return new ArchiveInputStreamDX10(in, entry);
-			}
-			else
-			{
-				return new ArchiveInputStream(in, entry);
-			}
+			return new ArchiveInputStream(in, entry);
 		}
 	}
 
 	@Override
-	public void load() throws DBException, IOException
+	public void load(boolean isForDisplay) throws DBException, IOException
 	{
 		if (file.length() > Integer.MAX_VALUE || !USE_FILE_MAPS)
 			in = new RandomAccessFile(file, "r");
@@ -229,20 +229,23 @@ public class ArchiveFileBtdx extends ArchiveFile
 
 				if (folder == null)
 				{
-					folder = new Folder(0, -1);
+					folder = new Folder(0, -1, isForDisplay);
 					folder.folderName = folderName;
 					folder.fileToHashMap = new HashMap<Long, ArchiveEntry>();
 					folderHashToFolderMap.put(folderHash, folder);
 				}
 
 				String fileName = fullFileName.substring(pathSep + 1).trim();
-				;
 				long fileHashCode = new HashCode(fileName, false).getHash();
 				filenameHashToFileNameMap.put(fileHashCode, fileName);
 
 				if (bsaFileType == BsaFileType.GNRL)
 				{
-					ArchiveEntry entry = new ArchiveEntry(this, folder.folderName, fileName);
+					ArchiveEntry entry;
+					if (isForDisplay)
+						entry = new DisplayableArchiveEntry(this, folder.folderName, fileName);
+					else
+						entry = new ArchiveEntry(this, folder.folderName, fileName);
 
 					byte buffer[] = new byte[36];
 					in.read(buffer);
@@ -256,7 +259,6 @@ public class ArchiveFileBtdx extends ArchiveFile
 					int unpackedLen = getInteger(buffer, 28); // 1C - unpacked length
 					int unk20 = getInteger(buffer, 32); // 20 - BAADF00D
 
-					entry.setIdentifier(hashCode());
 					entry.setFileOffset(offset);
 					entry.setFileLength(unpackedLen);
 					entry.setCompressed(packedLen != 0 && packedLen != unpackedLen);
@@ -271,7 +273,11 @@ public class ArchiveFileBtdx extends ArchiveFile
 				}
 				else
 				{
-					ArchiveEntryDX10 entry = new ArchiveEntryDX10(this, folder.folderName, fileName);
+					ArchiveEntryDX10 entry;
+					if (isForDisplay)
+						entry = new DisplayableArchiveEntryDX10(this, folder.folderName, fileName);
+					else
+						entry = new ArchiveEntryDX10(this, folder.folderName, fileName);
 
 					byte[] buffer = new byte[24];
 					in.read(buffer);
@@ -304,11 +310,8 @@ public class ArchiveFileBtdx extends ArchiveFile
 						}
 					}
 
-					entry.setIdentifier(hashCode());
-
 					folder.fileToHashMap.put(fileHashCode, entry);
 					folder.folderFileCount++;
-
 				}
 			}
 

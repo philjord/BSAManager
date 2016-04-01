@@ -9,11 +9,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import tools.io.MappedByteBufferRAF;
 import archive.ArchiveEntry;
 import archive.ArchiveFile;
 import archive.DBException;
 import archive.HashCode;
+import archive.displayables.DisplayableArchiveEntry;
+import tools.io.MappedByteBufferRAF;
 
 public class ArchiveFileTes3 extends ArchiveFile
 {
@@ -119,7 +120,7 @@ public class ArchiveFileTes3 extends ArchiveFile
 	}
 
 	@Override
-	public void load() throws DBException, IOException
+	public void load(boolean isForDisplay) throws DBException, IOException
 	{
 		if (file.length() > Integer.MAX_VALUE || !USE_FILE_MAPS)
 			in = new RandomAccessFile(file, "r");
@@ -207,19 +208,22 @@ public class ArchiveFileTes3 extends ArchiveFile
 
 				if (folder == null)
 				{
-					folder = new Folder(0, -1);
+					folder = new Folder(0, -1, isForDisplay);
 					folder.folderName = folderName;
 					folder.fileToHashMap = new HashMap<Long, ArchiveEntry>();
 					folderHashToFolderMap.put(folderHash, folder);
 				}
 
 				String fileName = fullFileName.substring(pathSep + 1).trim();
-				;
 				long fileHashCode = new HashCode(fileName, false).getHash();
 				filenameHashToFileNameMap.put(fileHashCode, fileName);
 
-				ArchiveEntry entry = new ArchiveEntry(this, folder.folderName, fileName);
-				entry.setIdentifier(hashCode());
+				ArchiveEntry entry;
+				if (isForDisplay)
+					entry = new DisplayableArchiveEntry(this, folder.folderName, fileName);
+				else
+					entry = new ArchiveEntry(this, folder.folderName, fileName);
+
 				entry.setFileOffset(fileDataStartOffset + fileOffsets[i]);
 				entry.setFileLength(fileSizes[i]);
 				entry.setCompressed(false);//never compressed
