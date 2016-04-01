@@ -5,9 +5,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+
+import com.frostwire.util.LongSparseArray;
 
 import archive.ArchiveEntry;
 import archive.ArchiveFile;
@@ -18,7 +18,7 @@ import tools.io.MappedByteBufferRAF;
 
 public class ArchiveFileTes3 extends ArchiveFile
 {
-	private Map<Long, String> filenameHashToFileNameMap;
+	private LongSparseArray<String> filenameHashToFileNameMap;
 
 	public ArchiveFileTes3(File file)
 	{
@@ -37,13 +37,15 @@ public class ArchiveFileTes3 extends ArchiveFile
 		int currentProgress = 0;
 		try
 		{
-			for (Folder folder : folderHashToFolderMap.values())
+			for (int f = 0; f < folderHashToFolderMap.size(); f++)
 			{
+				Folder folder = folderHashToFolderMap.get(folderHashToFolderMap.keyAt(f));
 				if (folder.fileToHashMap == null)
 				{
 					loadFolder(folder);
 				}
-				ret.addAll(folder.fileToHashMap.values());
+				for (int i = 0; i < folder.fileToHashMap.size(); i++)
+					ret.add(folder.fileToHashMap.get(folder.fileToHashMap.keyAt(i)));
 
 				filesToLoad -= folder.folderFileCount;
 				int newProgress = (filesToLoad * 100) / fileCount;
@@ -194,8 +196,8 @@ public class ArchiveFileTes3 extends ArchiveFile
 
 			//build up a trival folderhash from all the file names
 			// and preload the archive entries from the data above
-			folderHashToFolderMap = new HashMap<Long, Folder>();
-			filenameHashToFileNameMap = new HashMap<Long, String>(fileCount);
+			folderHashToFolderMap = new LongSparseArray<Folder>();
+			filenameHashToFileNameMap = new LongSparseArray<String>(fileCount);
 
 			for (int i = 0; i < fileCount; i++)
 			{
@@ -210,7 +212,7 @@ public class ArchiveFileTes3 extends ArchiveFile
 				{
 					folder = new Folder(0, -1, isForDisplay);
 					folder.folderName = folderName;
-					folder.fileToHashMap = new HashMap<Long, ArchiveEntry>();
+					folder.fileToHashMap = new LongSparseArray<ArchiveEntry>();
 					folderHashToFolderMap.put(folderHash, folder);
 				}
 

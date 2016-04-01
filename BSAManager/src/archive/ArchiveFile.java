@@ -7,7 +7,8 @@ import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.Map;
+
+import com.frostwire.util.LongSparseArray;
 
 public abstract class ArchiveFile
 {
@@ -34,7 +35,7 @@ public abstract class ArchiveFile
 
 	protected int fileCount;
 
-	protected Map<Long, Folder> folderHashToFolderMap;
+	protected LongSparseArray<Folder> folderHashToFolderMap;
 
 	public class Folder
 	{
@@ -46,7 +47,7 @@ public abstract class ArchiveFile
 
 		private boolean isForDisplay = false;
 
-		public Map<Long, ArchiveEntry> fileToHashMap;
+		public LongSparseArray<ArchiveEntry> fileToHashMap;
 
 		public Folder(int folderFileCount, long offset, boolean isForDisplay)
 		{
@@ -75,7 +76,7 @@ public abstract class ArchiveFile
 			return isForDisplay;
 		}
 
-		public Map<Long, ArchiveEntry> getFileToHashMap()
+		public LongSparseArray<ArchiveEntry> getFileToHashMap()
 		{
 			return fileToHashMap;
 		}

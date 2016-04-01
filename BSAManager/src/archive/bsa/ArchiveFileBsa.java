@@ -5,16 +5,16 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import tools.io.MappedByteBufferRAF;
+import com.frostwire.util.LongSparseArray;
+
 import archive.ArchiveEntry;
 import archive.ArchiveFile;
 import archive.DBException;
 import archive.HashCode;
 import archive.displayables.DisplayableArchiveEntry;
+import tools.io.MappedByteBufferRAF;
 
 public class ArchiveFileBsa extends ArchiveFile
 {
@@ -32,8 +32,8 @@ public class ArchiveFileBsa extends ArchiveFile
 
 	private boolean isForDisplay = false;
 
-	//I don't need the file name, it should never be given out, just used as a look up
-	private Map<Long, String> filenameHashToFileNameMap;
+	//tODO: I don't need the file name, it should never be given out, just used as a look up
+	private LongSparseArray<String> filenameHashToFileNameMap;
 
 	public ArchiveFileBsa(File file)
 	{
@@ -56,13 +56,15 @@ public class ArchiveFileBsa extends ArchiveFile
 		int currentProgress = 0;
 		try
 		{
-			for (Folder folder : folderHashToFolderMap.values())
+			for (int f = 0; f < folderHashToFolderMap.size(); f++)
 			{
+				Folder folder = folderHashToFolderMap.get(folderHashToFolderMap.keyAt(f));
 				if (folder.fileToHashMap == null)
 				{
 					loadFolder(folder);
 				}
-				ret.addAll(folder.fileToHashMap.values());
+				for (int i = 0; i < folder.fileToHashMap.size(); i++)
+					ret.add(folder.fileToHashMap.get(folder.fileToHashMap.keyAt(i)));
 
 				filesToLoad -= folder.folderFileCount;
 				int newProgress = (filesToLoad * 100) / fileCount;
@@ -140,7 +142,7 @@ public class ArchiveFileBsa extends ArchiveFile
 	protected void loadFolder(Folder folder) throws IOException
 	{
 
-		folder.fileToHashMap = new HashMap<Long, ArchiveEntry>(folder.folderFileCount);
+		folder.fileToHashMap = new LongSparseArray<ArchiveEntry>(folder.folderFileCount);
 
 		synchronized (in)
 		{
@@ -315,7 +317,7 @@ public class ArchiveFileBsa extends ArchiveFile
 
 			String[] fileNames = new String[fileCount];
 
-			filenameHashToFileNameMap = new HashMap<Long, String>(fileCount);
+			filenameHashToFileNameMap = new LongSparseArray<String>(fileCount);
 
 			int bufferIndex = 0;
 			for (int nameIndex = 0; nameIndex < fileCount; nameIndex++)
@@ -343,7 +345,7 @@ public class ArchiveFileBsa extends ArchiveFile
 				bufferIndex++;
 			}
 
-			folderHashToFolderMap = new HashMap<Long, Folder>(folderCount);
+			folderHashToFolderMap = new LongSparseArray<Folder>(folderCount);
 
 			byte buffer[] = new byte[16];
 			for (int folderIndex = 0; folderIndex < folderCount; folderIndex++)
