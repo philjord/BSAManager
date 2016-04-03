@@ -5,8 +5,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
- 
-
 public class BSArchiveSet extends ArrayList<ArchiveFile>
 {
 	public ArrayList<Thread> loadThreads = new ArrayList<Thread>();
@@ -14,19 +12,18 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 	private String name = "";
 
 	/**
-	 * If the root file is not a folder, it is assumed to be teh esm file and so it's parent folder is used
+	 * If the root file is not a folder, it is assumed to be the esm file and so it's parent folder is used
 	 * 
 	 * @param rootFilename
 	 * @param loadSiblingBsaFiles
-	 * @param loadNodes set true if you want to add this bsa file set to a tree
 	 * @param sopErrOnly 
 	 */
-	public BSArchiveSet(String rootFilename, boolean loadSiblingBsaFiles, boolean loadNodes)
+	public BSArchiveSet(String rootFilename, boolean loadSiblingBsaFiles)
 	{
-		this(new String[] { rootFilename }, loadSiblingBsaFiles, loadNodes);
+		this(new String[] { rootFilename }, loadSiblingBsaFiles);
 	}
 
-	public BSArchiveSet(String[] rootFilenames, boolean loadSiblingBsaFiles, boolean loadNodes)
+	public BSArchiveSet(String[] rootFilenames, boolean loadSiblingBsaFiles)
 	{
 		for (String rootFilename : rootFilenames)
 		{
@@ -42,7 +39,7 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 				{
 					if (file.getName().toLowerCase().endsWith(".bsa") || file.getName().toLowerCase().endsWith(".ba2"))
 					{
-						loadFile(file, loadNodes);
+						loadFile(file);
 					}
 				}
 
@@ -53,7 +50,7 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 						&& (rootFile.getName().toLowerCase().endsWith(".bsa") || rootFile.getName().toLowerCase().endsWith(".ba2")))
 				{
 					name = rootFile.getAbsolutePath();
-					loadFile(rootFile, loadNodes);
+					loadFile(rootFile);
 				}
 				else
 				{
@@ -82,11 +79,10 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 	}
 
 	/**
-	 * Loading Nodes uses teh progress dialog system
+	 * No display archive loader
 	 * @param file
-	 * @param loadNodes
 	 */
-	public void loadFile(final File file, boolean loadNodes)
+	public void loadFile(final File file)
 	{
 		// don't double load ever
 		for (ArchiveFile af : this)
@@ -95,16 +91,17 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 				return;
 		}
 
-		System.out.println("BSA File Set loading " + file);
-
 		Thread t = new Thread() {
 			public void run()
 			{
 				try
 				{
+					long start = System.currentTimeMillis();
+					System.out.println("BSA File Set loading " + file);
 					ArchiveFile archiveFile = ArchiveFile.createArchiveFile(file);
 					archiveFile.load(false);
 					add(archiveFile);
+					System.out.println("BSA File Set loaded " + file + " in " + (System.currentTimeMillis() - start));
 				}
 				catch (DBException e1)
 				{
