@@ -109,10 +109,14 @@ public class ArchiveFileBsa extends ArchiveFile
 
 			if (folder != null)
 			{
-				//do we need to load the files in this folder?
-				if (folder.fileToHashMap == null)
+				// don't let people get entries until we've finished loading thanks.
+				synchronized (folder)
 				{
-					loadFolder(folder);
+					//do we need to load the files in this folder?
+					if (folder.fileToHashMap == null)
+					{
+						loadFolder(folder);
+					}
 				}
 
 				String fileName = fullFileName.substring(pathSep + 1);
