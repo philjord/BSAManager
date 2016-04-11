@@ -43,10 +43,16 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 			//android can't take big files
 			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE)
 			{
-				FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
-				FileChannel ch = in.getChannel();
-				MappedByteBuffer mappedByteBuffer = ch.map(mm, entry.getFileOffset(), compressedLength);
+				MappedByteBuffer mappedByteBuffer = null;
+				synchronized (in)
+				{
+					FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
+					FileChannel ch = in.getChannel();
+					mappedByteBuffer = ch.map(mm, entry.getFileOffset(), compressedLength);
+
+				}
 				mappedByteBuffer.get(dataBufferIn, 0, compressedLength);
+
 			}
 			else
 			{
@@ -98,10 +104,16 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 
 			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE)
 			{
-				FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
-				FileChannel ch = in.getChannel();
-				MappedByteBuffer mappedByteBuffer = ch.map(mm, entry.getFileOffset(), entry.getFileLength());
+				MappedByteBuffer mappedByteBuffer = null;
+				synchronized (in)
+				{
+					FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
+					FileChannel ch = in.getChannel();
+					mappedByteBuffer = ch.map(mm, entry.getFileOffset(), entry.getFileLength());
+
+				}
 				mappedByteBuffer.get(dataBufferOut, 0, entry.getFileLength());
+
 			}
 			else
 			{
@@ -147,10 +159,15 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 			//android can't take big files
 			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE)
 			{
-				FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
-				FileChannel ch = in.getChannel();
-				MappedByteBuffer mappedByteBuffer = ch.map(mm, entry.getFileOffset(), compressedLength);
+				MappedByteBuffer mappedByteBuffer = null;
+				synchronized (in)
+				{
+					FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
+					FileChannel ch = in.getChannel();
+					mappedByteBuffer = ch.map(mm, entry.getFileOffset(), compressedLength);
+				}
 				mappedByteBuffer.get(dataBufferIn, 0, compressedLength);
+
 			}
 			else
 			{
@@ -202,10 +219,15 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 		{
 			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE)
 			{
-				FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
-				FileChannel ch = in.getChannel();
-				MappedByteBuffer mappedByteBuffer = ch.map(mm, entry.getFileOffset(), entry.getFileLength());
+				MappedByteBuffer mappedByteBuffer = null;
+				synchronized (in)
+				{
+					FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
+					FileChannel ch = in.getChannel();
+					mappedByteBuffer = ch.map(mm, entry.getFileOffset(), entry.getFileLength());
+				}
 				mappedByteBuffer.get(dataBufferOut, 0, entry.getFileLength());
+
 			}
 			else
 			{
