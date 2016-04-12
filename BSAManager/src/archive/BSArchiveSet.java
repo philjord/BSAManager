@@ -25,6 +25,7 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 
 	public BSArchiveSet(String[] rootFilenames, boolean loadSiblingBsaFiles)
 	{
+		long start = System.currentTimeMillis();
 		for (String rootFilename : rootFilenames)
 		{
 			File rootFile = new File(rootFilename);
@@ -71,6 +72,8 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 			}
 		}
 		loadThreads.clear();
+
+		System.out.println("BSAFileSet (" + rootFilenames.length + ") completely loaded in " + (System.currentTimeMillis() - start));
 
 		if (this.size() == 0)
 		{
