@@ -138,7 +138,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 			requiredBufferSize += tex.chunks[j].unpackedLen;
 		}
 		// collect up all the chunks
-		ByteBuffer dst = ByteBuffer.allocate(requiredBufferSize);
+		ByteBuffer dst = ByteBuffer.allocateDirect(requiredBufferSize);
 		dst.order(ByteOrder.LITTLE_ENDIAN);
 
 		dst.putInt(ddsHeader.DDS_MAGIC); // 'DDS '		

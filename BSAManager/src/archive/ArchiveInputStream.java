@@ -225,13 +225,13 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 				}
 			}
 		}
-		if (allocateDirect)
+		if (!allocateDirect)
 		{
 			return ByteBuffer.wrap(dataBufferOut);
 		}
 		else
 		{
-			ByteBuffer bb = ByteBuffer.allocate(dataBufferOut.length);
+			ByteBuffer bb = ByteBuffer.allocateDirect(dataBufferOut.length);
 			bb.order(ByteOrder.nativeOrder());
 			bb.put(dataBufferOut);
 			bb.position(0);
