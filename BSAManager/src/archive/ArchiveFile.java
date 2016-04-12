@@ -132,6 +132,7 @@ public abstract class ArchiveFile
 	}
 
 	/**
+	 * The advice below is not correct, but I'ma leave it there cos it's confusing that way
 	 * You probably don't want this method! unless you are doing Nif files
 	 * Be VERY careful, handing mappedbytebuffers to openGL via the addChild call will push disk access
 	 * onto the j3d thread, a very bad idea.
@@ -146,8 +147,17 @@ public abstract class ArchiveFile
 			throw new IOException("Archive file is not open");
 		}
 
-		return ArchiveInputStream.getByteBuffer(in, entry);
+		return ArchiveInputStream.getByteBuffer(in, entry, false);
+	}
 
+	public ByteBuffer getByteBuffer(ArchiveEntry entry, boolean allocateDirect) throws IOException
+	{
+		if (in == null)
+		{
+			throw new IOException("Archive file is not open");
+		}
+
+		return ArchiveInputStream.getByteBuffer(in, entry, allocateDirect);
 	}
 
 	public void close() throws IOException

@@ -9,6 +9,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.zip.DataFormatException;
@@ -52,7 +53,6 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 
 				}
 				mappedByteBuffer.get(dataBufferIn, 0, compressedLength);
-
 			}
 			else
 			{
@@ -63,7 +63,6 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 					if (c < 0)
 						throw new EOFException("Unexpected end of stream while inflating file");
 				}
-
 			}
 
 			if (ArchiveFile.USE_NON_NATIVE_ZIP)
@@ -78,30 +77,23 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 			else
 			{
 
-				Inflater inflater = new Inflater();
-				inflater.setInput(dataBufferIn);
-				//ByteArrayOutputStream outputStream = new ByteArrayOutputStream(chunk.unpackedLen);
-
+				Inflater inflater2 = new Inflater();
+				inflater2.setInput(dataBufferIn);
 				try
 				{
-					//while (!inflater.finished())
-					{
-						int count = inflater.inflate(dataBufferOut);
-						if (count != entry.getFileLength())
-							System.err.println("Inflate count issue! " + this);
-						//outputStream.write(b, 0, count);
-					}
+					int count = inflater2.inflate(dataBufferOut);
+					if (count != entry.getFileLength())
+						System.err.println("Inflate count issue! " + this);
+
 				}
 				catch (DataFormatException e)
 				{
 					e.printStackTrace();
 				}
-				//outputStream.close();
 			}
 		}
 		else
 		{
-
 			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE)
 			{
 				MappedByteBuffer mappedByteBuffer = null;
@@ -110,10 +102,8 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 					FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
 					FileChannel ch = in.getChannel();
 					mappedByteBuffer = ch.map(mm, entry.getFileOffset(), entry.getFileLength());
-
 				}
 				mappedByteBuffer.get(dataBufferOut, 0, entry.getFileLength());
-
 			}
 			else
 			{
@@ -139,7 +129,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 	 * @return
 	 * @throws IOException
 	 */
-	public static ByteBuffer getByteBuffer(RandomAccessFile in, ArchiveEntry entry) throws IOException
+	public static ByteBuffer getByteBuffer(RandomAccessFile in, ArchiveEntry entry, boolean allocateDirect) throws IOException
 	{
 
 		// not sure why this is bad, something weird with defaultcompressed flag the the archive load up
@@ -195,23 +185,18 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 
 				Inflater inflater = new Inflater();
 				inflater.setInput(dataBufferIn);
-				//ByteArrayOutputStream outputStream = new ByteArrayOutputStream(chunk.unpackedLen);
-
 				try
 				{
-					//while (!inflater.finished())
 					{
 						int count = inflater.inflate(dataBufferOut);
 						if (count != entry.getFileLength())
 							System.err.println("Inflate count issue! " + entry);
-						//outputStream.write(b, 0, count);
 					}
 				}
 				catch (DataFormatException e)
 				{
 					e.printStackTrace();
 				}
-				//outputStream.close();
 			}
 
 		}
@@ -240,8 +225,18 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 				}
 			}
 		}
-		return ByteBuffer.wrap(dataBufferOut);
-
+		if (allocateDirect)
+		{
+			return ByteBuffer.wrap(dataBufferOut);
+		}
+		else
+		{
+			ByteBuffer bb = ByteBuffer.allocate(dataBufferOut.length);
+			bb.order(ByteOrder.nativeOrder());
+			bb.put(dataBufferOut);
+			bb.position(0);
+			return bb;
+		}
 	}
 
 }
