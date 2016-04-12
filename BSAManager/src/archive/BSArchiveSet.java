@@ -71,10 +71,11 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 				e.printStackTrace();
 			}
 		}
+		System.out.println("BSAFileSet (" + loadThreads.size() + ") completely loaded in " + (System.currentTimeMillis() - start));
+
 		loadThreads.clear();
 
-		System.out.println("BSAFileSet (" + rootFilenames.length + ") completely loaded in " + (System.currentTimeMillis() - start));
-
+		
 		if (this.size() == 0)
 		{
 			System.out.println("BSAFileSet loaded no files using root: " + rootFilenames[0]);
