@@ -14,10 +14,10 @@ public abstract class ArchiveFile
 {
 
 	public static boolean USE_FILE_MAPS = true;
-	//TODO: with this idea and read only I can multithread access to bsa files now
 	public static boolean USE_MINI_CHANNEL_MAPS = false;//true requires ArchiveFile.USE_FILE_MAPS = false;
 	public static boolean USE_NON_NATIVE_ZIP = false;// true=slower but no native calls
-
+	public static boolean RETURN_MAPPED_BYTE_BUFFERS = true;// seems waay faster for uncompressed things
+	
 	public enum SIG
 	{
 		TES3, BSA, BTDX

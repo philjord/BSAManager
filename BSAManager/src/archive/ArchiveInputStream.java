@@ -136,12 +136,13 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 		if (entry.getFileLength() == 0)
 			entry.setFileLength(entry.getCompressedLength());
 
-		byte[] dataBufferOut = new byte[entry.getFileLength()];
+		byte[] dataBufferOut =null ;
 
 		//the inflate doesn't accept a bytebuffer
 		boolean isCompressed = entry.isCompressed();
 		if (isCompressed && entry.getFileLength() > 0)
 		{
+			dataBufferOut = new byte[entry.getFileLength()];
 			// entry size for buffer
 			int compressedLength = entry.getCompressedLength();
 			byte[] dataBufferIn = new byte[compressedLength];
@@ -211,11 +212,20 @@ public class ArchiveInputStream extends FastByteArrayInputStream
 					FileChannel ch = in.getChannel();
 					mappedByteBuffer = ch.map(mm, entry.getFileOffset(), entry.getFileLength());
 				}
-				mappedByteBuffer.get(dataBufferOut, 0, entry.getFileLength());
+				
+				// dear god, protect us
+				if (ArchiveFile.RETURN_MAPPED_BYTE_BUFFERS)
+					return mappedByteBuffer;
+				else
+				{
+					dataBufferOut = new byte[entry.getFileLength()];
+					mappedByteBuffer.get(dataBufferOut, 0, entry.getFileLength());
+				}
 
 			}
 			else
 			{
+				dataBufferOut = new byte[entry.getFileLength()];
 				synchronized (in)
 				{
 					in.seek(entry.getFileOffset());

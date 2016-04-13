@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -154,6 +155,42 @@ public class ArchiveFileBtdx extends ArchiveFile
 	}
 
 	@Override
+	public ByteBuffer getByteBuffer(ArchiveEntry entry) throws IOException
+	{
+		if (in == null)
+		{
+			throw new IOException("Archive file is not open");
+		}
+
+		if (bsaFileType == BsaFileType.DX10)
+		{
+			return ArchiveInputStreamDX10.getByteBuffer(in, entry, false);
+		}
+		else
+		{
+			return ArchiveInputStream.getByteBuffer(in, entry, false);
+		}
+	}
+
+	@Override
+	public ByteBuffer getByteBuffer(ArchiveEntry entry, boolean allocateDirect) throws IOException
+	{
+		if (in == null)
+		{
+			throw new IOException("Archive file is not open");
+		}
+
+		if (bsaFileType == BsaFileType.DX10)
+		{
+			return ArchiveInputStreamDX10.getByteBuffer(in, entry, allocateDirect);
+		}
+		else
+		{
+			return ArchiveInputStream.getByteBuffer(in, entry, allocateDirect);
+		}
+	}
+
+	@Override
 	public void load(boolean isForDisplay) throws DBException, IOException
 	{
 		if (file.length() > Integer.MAX_VALUE || !USE_FILE_MAPS)
@@ -221,6 +258,19 @@ public class ArchiveFileBtdx extends ArchiveFile
 
 			folderHashToFolderMap = new LongSparseArray<Folder>();
 			filenameHashToFileNameMap = new LongSparseArray<String>(fileCount);
+
+			byte[] buffer = null;
+			if (bsaFileType == BsaFileType.GNRL)
+			{
+				// we can read it all up front in this case
+				buffer = new byte[fileCount * 36];
+				in.read(buffer);
+			}
+			else
+			{
+				buffer = new byte[24];
+			}
+
 			for (int i = 0; i < fileCount; i++)
 			{
 				String fullFileName = fileNames[i].toLowerCase();
@@ -249,17 +299,16 @@ public class ArchiveFileBtdx extends ArchiveFile
 					else
 						entry = new ArchiveEntry(this, folder.folderName, fileName);
 
-					byte buffer[] = new byte[36];
-					in.read(buffer);
+					
 
-					// int nameHash = getInteger(buffer, 0);// 00 - name hash?
-					// String ext = new String(buffer, 4, 4); // 04 - extension
-					// int dirHash = getInteger(buffer, 8); // 08 - directory hash?
-					// int unk0C = getInteger(buffer, 12); // 0C - flags? 00100100
-					long offset = getLong(buffer, 16); // 10 - relative to start of file
-					int packedLen = getInteger(buffer, 24); // 18 - packed length (zlib)
-					int unpackedLen = getInteger(buffer, 28); // 1C - unpacked length
-					int unk20 = getInteger(buffer, 32); // 20 - BAADF00D
+					// int nameHash = getInteger(buffer, i*36+0);// 00 - name hash?
+					// String ext = new String(buffer, 4,i*36+ 4); // 04 - extension
+					// int dirHash = getInteger(buffer, i*36+8); // 08 - directory hash?
+					// int unk0C = getInteger(buffer, i*36+12); // 0C - flags? 00100100
+					long offset = getLong(buffer, i*36+16); // 10 - relative to start of file
+					int packedLen = getInteger(buffer, i*36+24); // 18 - packed length (zlib)
+					int unpackedLen = getInteger(buffer, i*36+28); // 1C - unpacked length
+					int unk20 = getInteger(buffer, i*36+32); // 20 - BAADF00D
 
 					entry.setFileOffset(offset);
 					entry.setFileLength(unpackedLen);
@@ -281,7 +330,6 @@ public class ArchiveFileBtdx extends ArchiveFile
 					else
 						entry = new ArchiveEntryDX10(this, folder.folderName, fileName);
 
-					byte[] buffer = new byte[24];
 					in.read(buffer);
 					// int nameHash = getInteger(buffer, 0);// 00 - name hash?
 					// String ext = new String(buffer, 4, 4); // 04 - extension
@@ -298,17 +346,18 @@ public class ArchiveFileBtdx extends ArchiveFile
 					if (entry.numChunks != 0)
 					{
 						entry.chunks = new DX10Chunk[entry.numChunks];
-
+						//read them all off at once
+						byte[] chunkBuffer = new byte[entry.numChunks * 24];
+						in.read(chunkBuffer);
 						for (int c = 0; c < entry.numChunks; c++)
 						{
-							in.read(buffer);
 							entry.chunks[c] = new DX10Chunk();
-							entry.chunks[c].offset = getLong(buffer, 0); // 00
-							entry.chunks[c].packedLen = getInteger(buffer, 8); // 08
-							entry.chunks[c].unpackedLen = getInteger(buffer, 12); // 0C
-							entry.chunks[c].startMip = getShort(buffer, 16); // 10
-							entry.chunks[c].endMip = getShort(buffer, 18); // 12
-							entry.chunks[c].unk14 = getInteger(buffer, 20); // 14 - BAADFOOD
+							entry.chunks[c].offset = getLong(chunkBuffer, (c * 24) + 0); // 00
+							entry.chunks[c].packedLen = getInteger(chunkBuffer, (c * 24) + 8); // 08
+							entry.chunks[c].unpackedLen = getInteger(chunkBuffer, (c * 24) + 12); // 0C
+							entry.chunks[c].startMip = getShort(chunkBuffer, (c * 24) + 16); // 10
+							entry.chunks[c].endMip = getShort(chunkBuffer, (c * 24) + 18); // 12
+							entry.chunks[c].unk14 = getInteger(chunkBuffer, (c * 24) + 20); // 14 - BAADFOOD
 						}
 					}
 

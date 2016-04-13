@@ -36,7 +36,80 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 		super(new byte[0]);//reset below once data is availble
 
 		ArchiveEntryDX10 tex = (ArchiveEntryDX10) entry;
+		int requiredBufferSize = 32 * 4;
+		for (int j = 0; j < tex.chunks.length; j++)
+		{
+			requiredBufferSize += tex.chunks[j].unpackedLen;
+		}
+		// collect up all the chunks
+		ByteBuffer dst = ByteBuffer.allocateDirect(requiredBufferSize);
+		dst.order(ByteOrder.LITTLE_ENDIAN);
+		insertHeader(tex, dst);
+		synchronized (in)
+		{
 
+			//FIXME:!!! no check for isCompressed!!
+
+			// Java straight inflate load near =13sec
+			Inflater inflater = new Inflater();
+			// each chunk can have any number of mips in it, so later one could be bigger than earlier!
+			byte[] dstBuff = new byte[tex.chunks[0].unpackedLen];
+			byte[] srcBuf = new byte[tex.chunks[0].packedLen];
+			for (int j = 0; j < tex.chunks.length; j++)
+			{
+				DX10Chunk chunk = tex.chunks[j];
+
+				if (chunk.packedLen > srcBuf.length)
+					srcBuf = new byte[chunk.packedLen];
+
+				if (chunk.unpackedLen > dstBuff.length)
+					dstBuff = new byte[chunk.unpackedLen];
+
+				//byte[] srcBuf = new byte[chunk.packedLen];
+				if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE)
+				{
+					FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
+					FileChannel ch = in.getChannel();
+					MappedByteBuffer mappedByteBuffer = ch.map(mm, chunk.offset, chunk.packedLen);
+
+					mappedByteBuffer.get(srcBuf, 0, chunk.packedLen);
+				}
+				else
+				{
+					in.seek(chunk.offset);
+					int c = in.read(srcBuf, 0, chunk.packedLen);
+					if (c < 0)
+						throw new EOFException("Unexpected end of stream while inflating file");
+				}
+
+				inflater.reset();
+				inflater.setInput(srcBuf, 0, chunk.packedLen);
+
+				try
+				{
+
+					int count = inflater.inflate(dstBuff);
+					if (count != chunk.unpackedLen)
+						System.err.println("Inflate count issue! " + this);
+
+				}
+				catch (DataFormatException e)
+				{
+					e.printStackTrace();
+				}
+
+				dst.put(dstBuff, 0, chunk.unpackedLen);
+			}
+		}
+
+		this.buf = dst.array();
+		this.pos = 0;
+		this.count = buf.length;
+
+	}
+
+	private static void insertHeader(ArchiveEntryDX10 tex, ByteBuffer dst)
+	{
 		DDS_HEADER ddsHeader = new DDS_HEADER();
 		DDS_HEADER_DXT10 dx10Header = new DDS_HEADER_DXT10();
 		boolean dx10 = false;
@@ -97,7 +170,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 			ddsHeader.ddspf = ddsHeader.DDSPF_DX10;
 			ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
 			// NOT seen yet
-			System.out.println("dx10 fourCC!!!!!!!!!!!!!!!!!!!!!!!!!! " + ddsHeader.ddspf.dwFourCC + " " + entry);
+			System.out.println("dx10 fourCC!!!!!!!!!!!!!!!!!!!!!!!!!! " + ddsHeader.ddspf.dwFourCC + " " + tex);
 			dx10 = true;
 			dx10Header.dxgiFormat = DDS_HEADER.DXGI_FORMAT_BC7_UNORM;
 			break;
@@ -131,15 +204,6 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 			System.err.println("unhandled format %02X (%d) (%s) " + tex.format + " " + tex);
 			return;
 		}
-
-		int requiredBufferSize = 32 * 4;
-		for (int j = 0; j < tex.chunks.length; j++)
-		{
-			requiredBufferSize += tex.chunks[j].unpackedLen;
-		}
-		// collect up all the chunks
-		ByteBuffer dst = ByteBuffer.allocateDirect(requiredBufferSize);
-		dst.order(ByteOrder.LITTLE_ENDIAN);
 
 		dst.putInt(ddsHeader.DDS_MAGIC); // 'DDS '		
 		dst.putInt(ddsHeader.dwSize);//dst.WriteBuf(ddsHeader, sizeof(ddsHeader));
@@ -187,64 +251,43 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 			dst.putInt(dx10Header.arraySize);
 			dst.putInt(dx10Header.miscFlags2);
 		}
+	}
 
+	/**
+	 * Be careful see ArchiveFile for warning
+	 * @param in
+	 * @param entry
+	 * @return
+	 * @throws IOException
+	 */
+	public static ByteBuffer getByteBuffer(RandomAccessFile in, ArchiveEntry entry, boolean allocateDirect) throws IOException
+	{
+
+		ArchiveEntryDX10 tex = (ArchiveEntryDX10) entry;
+		int requiredBufferSize = 32 * 4;
+		for (int j = 0; j < tex.chunks.length; j++)
+		{
+			requiredBufferSize += tex.chunks[j].unpackedLen;
+		}
+		// collect up all the chunks
+		ByteBuffer dst = null;
+
+		if (!allocateDirect)
+		{
+			dst = ByteBuffer.allocate(requiredBufferSize);
+		}
+		else
+		{
+			dst = ByteBuffer.allocateDirect(requiredBufferSize);
+		}
+		dst.order(ByteOrder.LITTLE_ENDIAN);
+
+		insertHeader(tex, dst);
 		synchronized (in)
 		{
-			/* All at once results in bad data
-			 int totalPackedLen = 0;
-			int totalUnpackedLen = 0;
-			for (int j = 0; j < tex.chunks.length; j++)
-			{
-				totalPackedLen += tex.chunks[j].packedLen;
-				totalUnpackedLen += tex.chunks[j].unpackedLen;
-			}
 			
-			byte[] srcBuf = new byte[totalPackedLen];
-			int pos = 0;
-			for (int j = 0; j < tex.chunks.length; j++)
-			{
-				DX10Chunk chunk = tex.chunks[j];
-			
-				in.seek(chunk.offset);
-				int c = in.read(srcBuf, pos, chunk.packedLen);
-				if (c < 0)
-					throw new EOFException("Unexpected end of stream while inflating file");
-				pos += chunk.packedLen;
-			}
-			
-			byte[] dstBuf = new byte[totalUnpackedLen];
-			
-			com.jcraft.jzlib.Inflater inflater = new com.jcraft.jzlib.Inflater();
-			inflater.setInput(srcBuf);
-			inflater.setOutput(dstBuf);
-			inflater.inflate(4);//Z_FINISH
-			inflater.end();
-			
-			dst.put(dstBuf, 0, totalUnpackedLen);*/
-
-			//JCraft load near = 22sec
-			/*	for (int j = 0; j < tex.chunks.length; j++)
-			
-			{
-				DX10Chunk chunk = tex.chunks[j];
-			
-				byte[] srcBuf = new byte[chunk.packedLen];
-			
-				in.seek(chunk.offset);
-				int c = in.read(srcBuf, 0, chunk.packedLen);
-				if (c < 0)
-					throw new EOFException("Unexpected end of stream while inflating file");
-			
-				byte[] dstBuf = new byte[chunk.unpackedLen];
-			
-				com.jcraft.jzlib.Inflater inflater = new com.jcraft.jzlib.Inflater();
-				inflater.setInput(srcBuf);
-				inflater.setOutput(dstBuf);
-				inflater.inflate(4);//Z_FINISH
-				inflater.end();
-			
-				dst.put(dstBuf, 0, chunk.unpackedLen);
-			}*/
+			//FIXME:!!! no check for isCompressed!!
+			//Notice Mapped_uncompressed no possible by a loooong way
 
 			// Java straight inflate load near =13sec
 			Inflater inflater = new Inflater();
@@ -254,7 +297,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 			for (int j = 0; j < tex.chunks.length; j++)
 			{
 				DX10Chunk chunk = tex.chunks[j];
-
+				
 				if (chunk.packedLen > srcBuf.length)
 					srcBuf = new byte[chunk.packedLen];
 
@@ -269,7 +312,6 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 					MappedByteBuffer mappedByteBuffer = ch.map(mm, chunk.offset, chunk.packedLen);
 
 					mappedByteBuffer.get(srcBuf, 0, chunk.packedLen);
-
 				}
 				else
 				{
@@ -278,35 +320,29 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream
 					if (c < 0)
 						throw new EOFException("Unexpected end of stream while inflating file");
 				}
-				//byte[] dstBuff = new byte[chunk.unpackedLen];		
+
 				inflater.reset();
 				inflater.setInput(srcBuf, 0, chunk.packedLen);
-				//ByteArrayOutputStream outputStream = new ByteArrayOutputStream(chunk.unpackedLen);
 
 				try
 				{
-					//while (!inflater.finished())
-					{
-						int count = inflater.inflate(dstBuff);
-						if (count != chunk.unpackedLen)
-							System.err.println("Inflate count issue! " + this);
-						//outputStream.write(b, 0, count);
-					}
+
+					int count = inflater.inflate(dstBuff);
+					if (count != chunk.unpackedLen)
+						System.err.println("Inflate count issue! ArchiveInputStreamDX10 ");
+
 				}
 				catch (DataFormatException e)
 				{
 					e.printStackTrace();
 				}
-				//outputStream.close();
-				//dst.put(outputStream.toByteArray(), 0, chunk.unpackedLen);
-				dst.put(dstBuff, 0, chunk.unpackedLen);
 
+				dst.put(dstBuff, 0, chunk.unpackedLen);
 			}
 		}
 
-		this.buf = dst.array();
-		this.pos = 0;
-		this.count = buf.length;
+		dst.position(0);
+		return dst;
 
 	}
 }
