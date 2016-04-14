@@ -12,11 +12,11 @@ import com.frostwire.util.LongSparseArray;
 
 public abstract class ArchiveFile
 {
-
 	public static boolean USE_FILE_MAPS = true;
 	public static boolean USE_MINI_CHANNEL_MAPS = false;//true requires ArchiveFile.USE_FILE_MAPS = false;
 	public static boolean USE_NON_NATIVE_ZIP = false;// true=slower but no native calls
-	public static boolean RETURN_MAPPED_BYTE_BUFFERS = true;// seems waay faster for uncompressed things
+	//CAREFUL!! this bad boy push disk acces into the renderer thread, super fast load up jerky first looky looky
+	public static boolean RETURN_MAPPED_BYTE_BUFFERS = false;// seems waay faster for uncompressed things
 	
 	public enum SIG
 	{
