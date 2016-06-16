@@ -75,7 +75,6 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 
 		loadThreads.clear();
 
-		
 		if (this.size() == 0)
 		{
 			System.out.println("BSAFileSet loaded no files using root: " + rootFilenames[0]);
@@ -88,14 +87,15 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 	 */
 	public void loadFile(final File file)
 	{
-		// don't double load ever
-		for (ArchiveFile af : this)
+		// don't double load ever, use for i to avoid concurrent mod exceptions
+		for (int i = 0; i < this.size(); i++)
 		{
-			if (af.getName().equals(file.getPath()))
+			if (this.get(i).getName().equals(file.getPath()))
 				return;
 		}
 
 		Thread t = new Thread() {
+			@Override
 			public void run()
 			{
 				try
