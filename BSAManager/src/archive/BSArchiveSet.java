@@ -104,7 +104,10 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 					System.out.println("BSA File Set loading " + file);
 					ArchiveFile archiveFile = ArchiveFile.createArchiveFile(file);
 					archiveFile.load(false);
-					add(archiveFile);
+					synchronized (BSArchiveSet.this)
+					{
+						add(archiveFile);
+					}
 					System.out.println("BSA File Set loaded " + file + " in " + (System.currentTimeMillis() - start));
 				}
 				catch (DBException e1)
