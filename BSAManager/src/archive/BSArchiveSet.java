@@ -29,33 +29,40 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 		for (String rootFilename : rootFilenames)
 		{
 			File rootFile = new File(rootFilename);
-			if (loadSiblingBsaFiles)
+			if (rootFile.exists())
 			{
-				if (!rootFile.isDirectory())
+				if (loadSiblingBsaFiles)
 				{
-					rootFile = rootFile.getParentFile();
-				}
-				name = rootFile.getAbsolutePath();
-				for (File file : rootFile.listFiles())
-				{
-					if (file.getName().toLowerCase().endsWith(".bsa") || file.getName().toLowerCase().endsWith(".ba2"))
+					if (!rootFile.isDirectory())
 					{
-						loadFile(file);
+						rootFile = rootFile.getParentFile();
 					}
-				}
-
-			}
-			else
-			{
-				if (!rootFile.isDirectory()
-						&& (rootFile.getName().toLowerCase().endsWith(".bsa") || rootFile.getName().toLowerCase().endsWith(".ba2")))
-				{
 					name = rootFile.getAbsolutePath();
-					loadFile(rootFile);
+					for (File file : rootFile.listFiles())
+					{
+						if (file.getName().toLowerCase().endsWith(".bsa") //
+								|| file.getName().toLowerCase().endsWith(".ba2")//
+								|| file.getName().toLowerCase().endsWith(".obb")) //android expansion file name
+						{
+							loadFile(file);
+						}
+					}
+
 				}
 				else
 				{
-					System.out.println("BSAFileSet bad non sibling load of " + rootFilename);
+					if (!rootFile.isDirectory() && (rootFile.getName().toLowerCase().endsWith(".bsa") //
+							|| rootFile.getName().toLowerCase().endsWith(".ba2")//
+							|| rootFile.getName().toLowerCase().endsWith(".obb")//
+					))
+					{
+						name = rootFile.getAbsolutePath();
+						loadFile(rootFile);
+					}
+					else
+					{
+						System.out.println("BSAFileSet bad non sibling load of " + rootFilename);
+					}
 				}
 			}
 		}
