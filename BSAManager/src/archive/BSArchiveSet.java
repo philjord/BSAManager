@@ -6,24 +6,25 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class BSArchiveSet extends ArrayList<ArchiveFile>
-{
+{	
 	public ArrayList<Thread> loadThreads = new ArrayList<Thread>();
 
 	private String name = "";
 
 	/**
 	 * If the root file is not a folder, it is assumed to be the esm file and so it's parent folder is used
+	 * A folder of resources will load all bsa files and check for resource sub folders
 	 * 
 	 * @param rootFilename
-	 * @param loadSiblingBsaFiles
+	 * @param folderOfResources
 	 * @param sopErrOnly 
 	 */
-	public BSArchiveSet(String rootFilename, boolean loadSiblingBsaFiles)
+	public BSArchiveSet(String rootFilename, boolean folderOfResources)
 	{
-		this(new String[] { rootFilename }, loadSiblingBsaFiles);
+		this(new String[] { rootFilename }, folderOfResources);
 	}
 
-	public BSArchiveSet(String[] rootFilenames, boolean loadSiblingBsaFiles)
+	public BSArchiveSet(String[] rootFilenames, boolean folderOfResources)
 	{
 		long start = System.currentTimeMillis();
 		for (String rootFilename : rootFilenames)
@@ -31,12 +32,14 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 			File rootFile = new File(rootFilename);
 			if (rootFile.exists())
 			{
-				if (loadSiblingBsaFiles)
+				if (folderOfResources)
 				{
 					if (!rootFile.isDirectory())
 					{
 						rootFile = rootFile.getParentFile();
 					}
+					
+					
 					name = rootFile.getAbsolutePath();
 					for (File file : rootFile.listFiles())
 					{
@@ -47,7 +50,6 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 							loadFile(file);
 						}
 					}
-
 				}
 				else
 				{
@@ -63,7 +65,7 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 					{
 						System.out.println("BSAFileSet bad non sibling load of " + rootFilename);
 					}
-				}
+				}				
 			}
 		}
 
@@ -141,8 +143,13 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 			af.close();
 		}
 	}
+	
+	public String getName()
+	{
+		return name;
+	}
 
-	public List<ArchiveEntry> getEntries()
+/*	public List<ArchiveEntry> getEntries()
 	{
 		List<ArchiveEntry> ret = new ArrayList<ArchiveEntry>();
 		for (ArchiveFile af : this)
@@ -152,10 +159,7 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 		return ret;
 	}
 
-	public String getName()
-	{
-		return name;
-	}
+	
 
 	public List<ArchiveFile> getMeshArchives()
 	{
@@ -188,5 +192,5 @@ public class BSArchiveSet extends ArrayList<ArchiveFile>
 				ret.add(af);
 		}
 		return ret;
-	}
+	}*/
 }
