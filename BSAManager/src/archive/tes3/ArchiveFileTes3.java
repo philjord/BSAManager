@@ -204,7 +204,7 @@ public class ArchiveFileTes3 extends ArchiveFile
 				String fullFileName = fileNames[i];
 
 				int pathSep = fullFileName.lastIndexOf("\\");
-				String folderName = pathSep == -1 ? fullFileName.substring(0, pathSep): "";// avoid exception on missing
+				String folderName = fullFileName.substring(0, pathSep);
 				long folderHash = new HashCode(folderName, true).getHash();
 				Folder folder = folderHashToFolderMap.get(folderHash);
 
@@ -216,7 +216,7 @@ public class ArchiveFileTes3 extends ArchiveFile
 					folderHashToFolderMap.put(folderHash, folder);
 				}
 
-				String fileName = fullFileName.substring(pathSep + 1).trim();//-1 path becomes 0 here
+				String fileName = fullFileName.substring(pathSep + 1).trim();
 				long fileHashCode = new HashCode(fileName, false).getHash();
 				filenameHashToFileNameMap.put(fileHashCode, fileName);
 
