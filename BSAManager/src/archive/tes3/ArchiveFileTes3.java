@@ -203,8 +203,15 @@ public class ArchiveFileTes3 extends ArchiveFile
 			{
 				String fullFileName = fileNames[i];
 
+				String folderName = "";
+				String fileName = fullFileName.trim();
 				int pathSep = fullFileName.lastIndexOf("\\");
-				String folderName = fullFileName.substring(0, pathSep);
+				if (pathSep != -1)
+				{
+					folderName = fullFileName.substring(0, pathSep);					
+					fileName = fullFileName.substring(pathSep + 1).trim();
+				}
+				
 				long folderHash = new HashCode(folderName, true).getHash();
 				Folder folder = folderHashToFolderMap.get(folderHash);
 
@@ -216,7 +223,6 @@ public class ArchiveFileTes3 extends ArchiveFile
 					folderHashToFolderMap.put(folderHash, folder);
 				}
 
-				String fileName = fullFileName.substring(pathSep + 1).trim();
 				long fileHashCode = new HashCode(fileName, false).getHash();
 				filenameHashToFileNameMap.put(fileHashCode, fileName);
 
