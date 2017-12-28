@@ -1,4 +1,4 @@
-package archive.tes3;
+package bsaio.tes3;
 
 import java.io.EOFException;
 import java.io.File;
@@ -9,11 +9,11 @@ import java.util.List;
 
 import com.frostwire.util.LongSparseArray;
 
-import archive.ArchiveEntry;
-import archive.ArchiveFile;
-import archive.DBException;
-import archive.HashCode;
-import archive.displayables.DisplayableArchiveEntry;
+import bsaio.ArchiveEntry;
+import bsaio.ArchiveFile;
+import bsaio.DBException;
+import bsaio.HashCode;
+import bsaio.displayables.DisplayableArchiveEntry;
 import tools.io.MappedByteBufferRAF;
 
 public class ArchiveFileTes3 extends ArchiveFile
