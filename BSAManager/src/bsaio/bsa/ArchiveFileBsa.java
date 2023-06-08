@@ -1,9 +1,8 @@
 package bsaio.bsa;
 
 import java.io.EOFException;
-import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,34 +13,31 @@ import bsaio.ArchiveFile;
 import bsaio.DBException;
 import bsaio.HashCode;
 import bsaio.displayables.DisplayableArchiveEntry;
-import tools.io.MappedByteBufferRAF;
+import tools.io.FileChannelRAF;
 
-public class ArchiveFileBsa extends ArchiveFile
-{
-	private int archiveFlags; //in BSA id
+public class ArchiveFileBsa extends ArchiveFile {
+	private int						archiveFlags;				//in BSA id
 
-	private int fileFlags; //in BSA id
+	private int						fileFlags;					//in BSA id
 
-	private boolean isCompressed;
+	private boolean					isCompressed;
 
-	private boolean defaultCompressed;
+	private boolean					defaultCompressed;
 
-	private boolean hasKTXFiles = false;
+	private boolean					hasKTXFiles		= false;
 
-	private boolean hasASTCFiles = false;
+	private boolean					hasASTCFiles	= false;
 
-	private boolean isForDisplay = false;
+	private boolean					isForDisplay	= false;
 
 	//tODO: I don't need the file name, it should never be given out, just used as a look up
-	private LongSparseArray<String> filenameHashToFileNameMap;
+	private LongSparseArray<String>	filenameHashToFileNameMap;
 
-	public ArchiveFileBsa(File file)
-	{
-		super(SIG.BSA, file);
+	public ArchiveFileBsa(FileChannel file, String fileName) {
+		super(SIG.BSA, file, fileName);
 	}
 
-	public int getFileFlags()
-	{
+	public int getFileFlags() {
 		return fileFlags;
 	}
 
@@ -49,18 +45,15 @@ public class ArchiveFileBsa extends ArchiveFile
 	 * CAUTION Super HEAVY WEIGHT!!
 	 * @return
 	 */
-	public List<ArchiveEntry> getEntries()
-	{
+	@Override
+	public List<ArchiveEntry> getEntries() {
 		ArrayList<ArchiveEntry> ret = new ArrayList<ArchiveEntry>();
 		int filesToLoad = fileCount;
 		int currentProgress = 0;
-		try
-		{
-			for (int f = 0; f < folderHashToFolderMap.size(); f++)
-			{
+		try {
+			for (int f = 0; f < folderHashToFolderMap.size(); f++) {
 				Folder folder = folderHashToFolderMap.get(folderHashToFolderMap.keyAt(f));
-				if (folder.fileToHashMap == null)
-				{
+				if (folder.fileToHashMap == null) {
 					loadFolder(folder);
 				}
 				for (int i = 0; i < folder.fileToHashMap.size(); i++)
@@ -68,53 +61,44 @@ public class ArchiveFileBsa extends ArchiveFile
 
 				filesToLoad -= folder.folderFileCount;
 				int newProgress = (filesToLoad * 100) / fileCount;
-				if (newProgress >= currentProgress + 5)
-				{
+				if (newProgress >= currentProgress + 5) {
 					currentProgress = newProgress;
 
 				}
 			}
 
-		}
-		catch (IOException e)
-		{
-			System.out.println("ArchiveFile Exception for filename:  " + e + " " + e.getStackTrace()[0]);
+		} catch (IOException e) {
+			System.out.println("ArchiveFile Exception for filename:  " + e + " " + e.getStackTrace() [0]);
 		}
 
 		return ret;
 
 	}
 
-	public ArchiveEntry getEntry(String fullFileName)
-	{
+	@Override
+	public ArchiveEntry getEntry(String fullFileName) {
 		fullFileName = fullFileName.toLowerCase();
 		fullFileName = fullFileName.trim();
-		if (fullFileName.indexOf("/") != -1)
-		{
+		if (fullFileName.indexOf("/") != -1) {
 			StringBuilder buildName = new StringBuilder(fullFileName);
 			int sep;
-			while ((sep = buildName.indexOf("/")) >= 0)
-			{
+			while ((sep = buildName.indexOf("/")) >= 0) {
 				buildName.replace(sep, sep + 1, "\\");
 			}
 			fullFileName = buildName.toString();
 		}
-		try
-		{
+		try {
 
 			int pathSep = fullFileName.lastIndexOf("\\");
 			String folderName = fullFileName.substring(0, pathSep);
 			long folderHash = new HashCode(folderName, true).getHash();
 			Folder folder = folderHashToFolderMap.get(folderHash);
 
-			if (folder != null)
-			{
+			if (folder != null) {
 				// don't let people get entries until we've finished loading thanks.
-				synchronized (folder)
-				{
+				synchronized (folder) {
 					//do we need to load the files in this folder?
-					if (folder.fileToHashMap == null)
-					{
+					if (folder.fileToHashMap == null) {
 						loadFolder(folder);
 					}
 				}
@@ -122,34 +106,28 @@ public class ArchiveFileBsa extends ArchiveFile
 				String fileName = fullFileName.substring(pathSep + 1);
 				long fileHashCode = new HashCode(fileName, false).getHash();
 				String bsaFileName = filenameHashToFileNameMap.get(fileHashCode);
-				if (bsaFileName != null)
-				{
-					if (bsaFileName.equals(fileName))
-					{
+				if (bsaFileName != null) {
+					if (bsaFileName.equals(fileName)) {
 						return folder.fileToHashMap.get(fileHashCode);
-					}
-					else
-					{
+					} else {
 						System.out.println("BSA File name mismatch: " + bsaFileName + " " + fileName);
 					}
 				}
 			}
-		}
-		catch (IOException e)
-		{
-			System.out.println("ArchiveFile Exception for filename:  " + fullFileName + " " + e + " " + e.getStackTrace()[0]);
+		} catch (IOException e) {
+			System.out.println(
+					"ArchiveFile Exception for filename:  " + fullFileName + " " + e + " " + e.getStackTrace() [0]);
 		}
 
 		return null;
 	}
 
-	protected void loadFolder(Folder folder) throws IOException
-	{
+	@Override
+	protected void loadFolder(Folder folder) throws IOException {
 
 		folder.fileToHashMap = new LongSparseArray<ArchiveEntry>(folder.folderFileCount);
 
-		synchronized (in)
-		{
+		synchronized (in) {
 			byte name[] = new byte[256];
 
 			// now go and read the folders name and then do it's files
@@ -167,8 +145,7 @@ public class ArchiveFileBsa extends ArchiveFile
 			byte buffer[] = new byte[16];
 			fp += length + 1; // move pointer beyond folder name ready for file list (+1 is for a null byte)
 
-			for (int fileIndex = 0; fileIndex < folder.folderFileCount; fileIndex++)
-			{
+			for (int fileIndex = 0; fileIndex < folder.folderFileCount; fileIndex++) {
 				// pull data in a buffer for reading
 				in.seek(fp);
 				count = in.read(buffer);
@@ -192,14 +169,12 @@ public class ArchiveFileBsa extends ArchiveFile
 				else
 					entry = new ArchiveEntry(this, folder.folderName, fileName);
 
-				if (version == 104)
-				{
+				if (version == 104) {
 					//FO3 - Fallout 3
 					//TES5 - Skyrim
 
 					// go to data area and read sizes off now
-					if (defaultCompressed)
-					{
+					if (defaultCompressed) {
 						in.seek(dataOffset);
 						length = (in.readByte() & 0xff) + 1;
 						dataOffset += length;
@@ -208,8 +183,7 @@ public class ArchiveFileBsa extends ArchiveFile
 
 					//now do something a bit different if the other compressed flag is set
 					int compressedLength = 0;
-					if (isCompressed)
-					{
+					if (isCompressed) {
 						in.seek(dataOffset);
 						count = in.read(buffer, 0, 4);
 						if (count != 4)
@@ -225,23 +199,19 @@ public class ArchiveFileBsa extends ArchiveFile
 					entry.setCompressed(isCompressed);
 					entry.setCompressedLength(compressedLength);
 
-				}
-				else if (version == 103)
-				{
+				} else if (version == 103) {
 					//TES4 - Oblivion
 
 					boolean compressed = isCompressed;
 
 					//read off special inverted flag
-					if ((dataLength & (1 << 30)) != 0)
-					{
+					if ((dataLength & (1 << 30)) != 0) {
 						dataLength ^= 1 << 30;
 						compressed = !compressed;
 					}
 
 					int unCompressedLength = 0;
-					if (compressed)
-					{
+					if (compressed) {
 						// data area start with uncompressed size tehn compressed data
 						in.seek(dataOffset);
 						count = in.read(buffer, 0, 4);
@@ -265,34 +235,33 @@ public class ArchiveFileBsa extends ArchiveFile
 
 	}
 
-	public void load(boolean isForDisplay) throws DBException, IOException
-	{
+	@Override
+	public void load(boolean isForDisplay) throws DBException, IOException {
 		//TODO: support large files with 2 maps
-		if (file.length() > Integer.MAX_VALUE || !USE_FILE_MAPS)
-			in = new RandomAccessFile(file, "r");
+		if (file.size() > Integer.MAX_VALUE || !USE_FILE_MAPS)
+			in = new FileChannelRAF(file);
 		else
-			in = new MappedByteBufferRAF(file, "r");
+			in = new FileChannelRAF(file);
 
 		this.isForDisplay = isForDisplay;
 
 		// lock just in case anyone else tries an early read
-		synchronized (in)
-		{
+		synchronized (in) {
 			//load header
 			byte header[] = new byte[36];
 
 			int count = in.read(header);
 			if (count != 36)
-				throw new EOFException("Archive header is incomplete " + file.getAbsolutePath());
+				throw new EOFException("Archive header is incomplete " + fileName);
 
 			String id = new String(header, 0, 4);
 
 			if (!id.equals("BSA\0"))
-				throw new DBException("Archive id is bad " + id + " " + file.getAbsolutePath());
+				throw new DBException("Archive id is bad " + id + " " + fileName);
 
 			version = getInteger(header, 4);
 			if (version != 104 && version != 103)
-				throw new DBException("BSA version " + version + " is not supported " + file.getAbsolutePath());
+				throw new DBException("BSA version " + version + " is not supported " + fileName);
 
 			long folderOffset = getInteger(header, 8) & 0xffffffffL;
 			archiveFlags = getInteger(header, 12);
@@ -304,7 +273,7 @@ public class ArchiveFileBsa extends ArchiveFile
 			//end of load header
 
 			if ((archiveFlags & 3) != 3)
-				throw new DBException("Archive does not use directory/file names " + file.getAbsolutePath());
+				throw new DBException("Archive does not use directory/file names " + fileName);
 
 			isCompressed = (archiveFlags & 4) != 0;//WTF is the difference?
 			defaultCompressed = (archiveFlags & 0x100) != 0;
@@ -317,28 +286,26 @@ public class ArchiveFileBsa extends ArchiveFile
 			count = in.read(nameBuffer);
 
 			if (count != fileNamesLength)
-				throw new EOFException("File names buffer is incomplete " + file.getAbsolutePath());
+				throw new EOFException("File names buffer is incomplete " + fileName);
 
 			String[] fileNames = new String[fileCount];
 
 			filenameHashToFileNameMap = new LongSparseArray<String>(fileCount);
 
 			int bufferIndex = 0;
-			for (int nameIndex = 0; nameIndex < fileCount; nameIndex++)
-			{
+			for (int nameIndex = 0; nameIndex < fileCount; nameIndex++) {
 				int startIndex = bufferIndex;
 				// search through for the end of the filename
-				for (; bufferIndex < fileNamesLength && nameBuffer[bufferIndex] != 0; bufferIndex++)
-				{
+				for (; bufferIndex < fileNamesLength && nameBuffer [bufferIndex] != 0; bufferIndex++) {
 					;
 				}
 
 				if (bufferIndex >= fileNamesLength)
-					throw new DBException("File names buffer truncated " + file.getAbsolutePath());
+					throw new DBException("File names buffer truncated " + fileName);
 
 				String filename = new String(nameBuffer, startIndex, bufferIndex - startIndex);
 
-				fileNames[nameIndex] = filename;
+				fileNames [nameIndex] = filename;
 				//these must be loaded and hashed now as the folder only has the hash values in it
 				filenameHashToFileNameMap.put(new HashCode(filename, false).getHash(), filename);
 
@@ -352,13 +319,12 @@ public class ArchiveFileBsa extends ArchiveFile
 			folderHashToFolderMap = new LongSparseArray<Folder>(folderCount);
 
 			byte buffer[] = new byte[16];
-			for (int folderIndex = 0; folderIndex < folderCount; folderIndex++)
-			{
+			for (int folderIndex = 0; folderIndex < folderCount; folderIndex++) {
 				// pull data in a buffer for reading
 				in.seek(folderOffset);
 				count = in.read(buffer);
 				if (count != 16)
-					throw new EOFException("Folder record is incomplete " + file.getAbsolutePath());
+					throw new EOFException("Folder record is incomplete " + fileName);
 
 				folderOffset += 16L; //set pointer ready for next folderIndex for loop
 
@@ -375,28 +341,28 @@ public class ArchiveFileBsa extends ArchiveFile
 
 	}
 
-	public boolean hasNifOrKf()
-	{
+	@Override
+	public boolean hasNifOrKf() {
 		return (fileFlags & 1) != 0 || (fileFlags & 0x40) != 0;
 	}
 
-	public boolean hasDDS()
-	{
+	@Override
+	public boolean hasDDS() {
 		return (fileFlags & 2) != 0;
 	}
 
-	public boolean hasKTX()
-	{
+	@Override
+	public boolean hasKTX() {
 		return hasKTXFiles;
 	}
 
-	public boolean hasASTC()
-	{
+	@Override
+	public boolean hasASTC() {
 		return hasASTCFiles;
 	}
 
-	public boolean hasSounds()
-	{
+	@Override
+	public boolean hasSounds() {
 		return (fileFlags & 8) != 0 || (fileFlags & 0x10) != 0;
 	}
 

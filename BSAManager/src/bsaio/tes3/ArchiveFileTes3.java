@@ -1,9 +1,8 @@
 package bsaio.tes3;
 
 import java.io.EOFException;
-import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,15 +13,13 @@ import bsaio.ArchiveFile;
 import bsaio.DBException;
 import bsaio.HashCode;
 import bsaio.displayables.DisplayableArchiveEntry;
-import tools.io.MappedByteBufferRAF;
+import tools.io.FileChannelRAF;
 
-public class ArchiveFileTes3 extends ArchiveFile
-{
+public class ArchiveFileTes3 extends ArchiveFile {
 	private LongSparseArray<String> filenameHashToFileNameMap;
 
-	public ArchiveFileTes3(File file)
-	{
-		super(SIG.TES3, file);
+	public ArchiveFileTes3(FileChannel file, String fileName) {
+		super(SIG.TES3, file, fileName);
 	}
 
 	/**
@@ -30,18 +27,14 @@ public class ArchiveFileTes3 extends ArchiveFile
 	 * @return
 	 */
 	@Override
-	public List<ArchiveEntry> getEntries()
-	{
+	public List<ArchiveEntry> getEntries() {
 		ArrayList<ArchiveEntry> ret = new ArrayList<ArchiveEntry>();
 		int filesToLoad = fileCount;
 		int currentProgress = 0;
-		try
-		{
-			for (int f = 0; f < folderHashToFolderMap.size(); f++)
-			{
+		try {
+			for (int f = 0; f < folderHashToFolderMap.size(); f++) {
 				Folder folder = folderHashToFolderMap.get(folderHashToFolderMap.keyAt(f));
-				if (folder.fileToHashMap == null)
-				{
+				if (folder.fileToHashMap == null) {
 					loadFolder(folder);
 				}
 				for (int i = 0; i < folder.fileToHashMap.size(); i++)
@@ -49,17 +42,14 @@ public class ArchiveFileTes3 extends ArchiveFile
 
 				filesToLoad -= folder.folderFileCount;
 				int newProgress = (filesToLoad * 100) / fileCount;
-				if (newProgress >= currentProgress + 5)
-				{
+				if (newProgress >= currentProgress + 5) {
 					currentProgress = newProgress;
 
 				}
 			}
 
-		}
-		catch (IOException e)
-		{
-			System.out.println("ArchiveFile Exception for filename:  " + e + " " + e.getStackTrace()[0]);
+		} catch (IOException e) {
+			System.out.println("ArchiveFile Exception for filename:  " + e + " " + e.getStackTrace() [0]);
 		}
 
 		return ret;
@@ -67,16 +57,13 @@ public class ArchiveFileTes3 extends ArchiveFile
 	}
 
 	@Override
-	public ArchiveEntry getEntry(String fullFileName)
-	{
+	public ArchiveEntry getEntry(String fullFileName) {
 		fullFileName = fullFileName.toLowerCase();
 		fullFileName = fullFileName.trim();
-		if (fullFileName.indexOf("/") != -1)
-		{
+		if (fullFileName.indexOf("/") != -1) {
 			StringBuilder buildName = new StringBuilder(fullFileName);
 			int sep;
-			while ((sep = buildName.indexOf("/")) >= 0)
-			{
+			while ((sep = buildName.indexOf("/")) >= 0) {
 				buildName.replace(sep, sep + 1, "\\");
 			}
 			fullFileName = buildName.toString();
@@ -87,11 +74,9 @@ public class ArchiveFileTes3 extends ArchiveFile
 		long folderHash = new HashCode(folderName, true).getHash();
 		Folder folder = folderHashToFolderMap.get(folderHash);
 
-		if (folder != null)
-		{
+		if (folder != null) {
 			//do we need to load the files in this folder?
-			if (folder.fileToHashMap == null)
-			{
+			if (folder.fileToHashMap == null) {
 				System.out.println("TES3 folderName not indexed " + folderName);
 				return null;
 			}
@@ -99,14 +84,10 @@ public class ArchiveFileTes3 extends ArchiveFile
 			String fileName = fullFileName.substring(pathSep + 1);
 			long fileHashCode = new HashCode(fileName, false).getHash();
 			String bsaFileName = filenameHashToFileNameMap.get(fileHashCode);
-			if (bsaFileName != null)
-			{
-				if (bsaFileName.equals(fileName))
-				{
+			if (bsaFileName != null) {
+				if (bsaFileName.equals(fileName)) {
 					return folder.fileToHashMap.get(fileHashCode);
-				}
-				else
-				{
+				} else {
 					System.out.println("BSA File name mismatch: " + bsaFileName + " " + fileName);
 				}
 			}
@@ -116,22 +97,19 @@ public class ArchiveFileTes3 extends ArchiveFile
 	}
 
 	@Override
-	protected void loadFolder(Folder folder) throws IOException
-	{
+	protected void loadFolder(Folder folder) throws IOException {
 		throw new UnsupportedOperationException("TES3 is loaded at intial load time, so this should never be called");
 	}
 
 	@Override
-	public void load(boolean isForDisplay) throws DBException, IOException
-	{
-		if (file.length() > Integer.MAX_VALUE || !USE_FILE_MAPS)
-			in = new RandomAccessFile(file, "r");
+	public void load(boolean isForDisplay) throws DBException, IOException {
+		if (file.size() > Integer.MAX_VALUE || !USE_FILE_MAPS)
+			in = new FileChannelRAF(file, "r");
 		else
-			in = new MappedByteBufferRAF(file, "r");
+			in = new FileChannelRAF(file, "r");
 
 		// lock just in case anyone else tries an early read
-		synchronized (in)
-		{
+		synchronized (in) {
 			//reset to start
 			in.seek(0);
 
@@ -150,44 +128,41 @@ public class ArchiveFileTes3 extends ArchiveFile
 			long[] fileOffsets = new long[fileCount];
 			byte[] buffer = new byte[8];
 
-			for (int i = 0; i < fileCount; i++)
-			{
+			for (int i = 0; i < fileCount; i++) {
 				count = in.read(buffer);
 
 				if (count != buffer.length)
 					throw new EOFException("buffer is incomplete");
-				fileSizes[i] = getInteger(buffer, 0);
-				fileOffsets[i] = getInteger(buffer, 4);
+				fileSizes [i] = getInteger(buffer, 0);
+				fileOffsets [i] = getInteger(buffer, 4);
 			}
 
 			long[] fileNameOffsets = new long[fileCount];
 			buffer = new byte[4];
-			for (int i = 0; i < fileCount; i++)
-			{
+			for (int i = 0; i < fileCount; i++) {
 				count = in.read(buffer);
 
 				if (count != buffer.length)
 					throw new EOFException("buffer is incomplete");
-				fileNameOffsets[i] = getInteger(buffer, 0);
+				fileNameOffsets [i] = getInteger(buffer, 0);
 			}
 			//restate the offsets as lengths for use below
 			int[] fileNameLengths = new int[fileCount];
-			for (int i = 1; i < fileCount; i++)
-			{
-				fileNameLengths[i - 1] = (int) (fileNameOffsets[i] - fileNameOffsets[i - 1]);
+			for (int i = 1; i < fileCount; i++) {
+				fileNameLengths [i - 1] = (int)(fileNameOffsets [i] - fileNameOffsets [i - 1]);
 			}
 			//last filename length calculated				
-			fileNameLengths[fileCount - 1] = (int) ((hashtableOffset - (12 * fileCount)) - fileNameOffsets[fileCount - 1]);
+			fileNameLengths [fileCount
+								- 1] = (int)((hashtableOffset - (12 * fileCount)) - fileNameOffsets [fileCount - 1]);
 
 			String[] fileNames = new String[fileCount];
-			for (int i = 0; i < fileCount; i++)
-			{
-				buffer = new byte[fileNameLengths[i]];
+			for (int i = 0; i < fileCount; i++) {
+				buffer = new byte[fileNameLengths [i]];
 				count = in.read(buffer);
 
 				if (count != buffer.length)
 					throw new EOFException("buffer is incomplete");
-				fileNames[i] = new String(buffer, 0, buffer.length - 1);
+				fileNames [i] = new String(buffer, 0, buffer.length - 1);
 			}
 
 			//hash section ignored (just use the tes4+ hash system)					
@@ -199,24 +174,21 @@ public class ArchiveFileTes3 extends ArchiveFile
 			folderHashToFolderMap = new LongSparseArray<Folder>();
 			filenameHashToFileNameMap = new LongSparseArray<String>(fileCount);
 
-			for (int i = 0; i < fileCount; i++)
-			{
-				String fullFileName = fileNames[i];
+			for (int i = 0; i < fileCount; i++) {
+				String fullFileName = fileNames [i];
 
 				String folderName = "";
 				String fileName = fullFileName.trim();
 				int pathSep = fullFileName.lastIndexOf("\\");
-				if (pathSep != -1)
-				{
-					folderName = fullFileName.substring(0, pathSep);					
+				if (pathSep != -1) {
+					folderName = fullFileName.substring(0, pathSep);
 					fileName = fullFileName.substring(pathSep + 1).trim();
 				}
-				
+
 				long folderHash = new HashCode(folderName, true).getHash();
 				Folder folder = folderHashToFolderMap.get(folderHash);
 
-				if (folder == null)
-				{
+				if (folder == null) {
 					folder = new Folder(0, -1, isForDisplay);
 					folder.folderName = folderName;
 					folder.fileToHashMap = new LongSparseArray<ArchiveEntry>();
@@ -232,8 +204,8 @@ public class ArchiveFileTes3 extends ArchiveFile
 				else
 					entry = new ArchiveEntry(this, folder.folderName, fileName);
 
-				entry.setFileOffset(fileDataStartOffset + fileOffsets[i]);
-				entry.setFileLength(fileSizes[i]);
+				entry.setFileOffset(fileDataStartOffset + fileOffsets [i]);
+				entry.setFileLength(fileSizes [i]);
 				entry.setCompressed(false);//never compressed
 				entry.setCompressedLength(-1);
 				folder.fileToHashMap.put(fileHashCode, entry);
@@ -245,31 +217,27 @@ public class ArchiveFileTes3 extends ArchiveFile
 	}
 
 	@Override
-	public boolean hasNifOrKf()
-	{
+	public boolean hasNifOrKf() {
 		return true;
 	}
 
 	@Override
-	public boolean hasDDS()
-	{
+	public boolean hasDDS() {
 		return true;
 	}
 
 	@Override
-	public boolean hasKTX()
-	{
+	public boolean hasKTX() {
 		return false;
 	}
 
 	@Override
-	public boolean hasASTC()
-	{
+	public boolean hasASTC() {
 		return false;
 	}
 
-	public boolean hasSounds()
-	{
+	@Override
+	public boolean hasSounds() {
 		return true;
 	}
 

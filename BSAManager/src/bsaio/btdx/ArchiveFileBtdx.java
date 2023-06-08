@@ -1,11 +1,10 @@
 package bsaio.btdx;
 
 import java.io.EOFException;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,23 +18,20 @@ import bsaio.HashCode;
 import bsaio.btdx.ArchiveEntryDX10.DX10Chunk;
 import bsaio.displayables.DisplayableArchiveEntry;
 import bsaio.displayables.DisplayableArchiveEntryDX10;
-import tools.io.MappedByteBufferRAF;
+import tools.io.FileChannelRAF;
 
-public class ArchiveFileBtdx extends ArchiveFile
-{
+public class ArchiveFileBtdx extends ArchiveFile {
 
-	public enum BsaFileType
-	{
+	public enum BsaFileType {
 		GNRL, DX10
 	};
 
-	private BsaFileType bsaFileType; // in BTDX id
+	private BsaFileType				bsaFileType;				// in BTDX id
 
-	private LongSparseArray<String> filenameHashToFileNameMap;
+	private LongSparseArray<String>	filenameHashToFileNameMap;
 
-	public ArchiveFileBtdx(File file)
-	{
-		super(SIG.BTDX, file);
+	public ArchiveFileBtdx(FileChannel file, String fileName) {
+		super(SIG.BTDX, file, fileName);
 	}
 
 	/**
@@ -44,18 +40,14 @@ public class ArchiveFileBtdx extends ArchiveFile
 	 * @return
 	 */
 	@Override
-	public List<ArchiveEntry> getEntries()
-	{
+	public List<ArchiveEntry> getEntries() {
 		ArrayList<ArchiveEntry> ret = new ArrayList<ArchiveEntry>();
 		int filesToLoad = fileCount;
 		int currentProgress = 0;
-		try
-		{
-			for (int f = 0; f < folderHashToFolderMap.size(); f++)
-			{
+		try {
+			for (int f = 0; f < folderHashToFolderMap.size(); f++) {
 				Folder folder = folderHashToFolderMap.get(folderHashToFolderMap.keyAt(f));
-				if (folder.fileToHashMap == null)
-				{
+				if (folder.fileToHashMap == null) {
 					loadFolder(folder);
 				}
 				for (int i = 0; i < folder.fileToHashMap.size(); i++)
@@ -63,17 +55,14 @@ public class ArchiveFileBtdx extends ArchiveFile
 
 				filesToLoad -= folder.folderFileCount;
 				int newProgress = (filesToLoad * 100) / fileCount;
-				if (newProgress >= currentProgress + 5)
-				{
+				if (newProgress >= currentProgress + 5) {
 					currentProgress = newProgress;
 
 				}
 			}
 
-		}
-		catch (IOException e)
-		{
-			System.out.println("ArchiveFile Exception for filename:  " + e + " " + e.getStackTrace()[0]);
+		} catch (IOException e) {
+			System.out.println("ArchiveFile Exception for filename:  " + e + " " + e.getStackTrace() [0]);
 		}
 
 		return ret;
@@ -81,16 +70,13 @@ public class ArchiveFileBtdx extends ArchiveFile
 	}
 
 	@Override
-	public ArchiveEntry getEntry(String fullFileName)
-	{
+	public ArchiveEntry getEntry(String fullFileName) {
 		fullFileName = fullFileName.toLowerCase();
 		fullFileName = fullFileName.trim();
-		if (fullFileName.indexOf("/") != -1)
-		{
+		if (fullFileName.indexOf("/") != -1) {
 			StringBuilder buildName = new StringBuilder(fullFileName);
 			int sep;
-			while ((sep = buildName.indexOf("/")) >= 0)
-			{
+			while ((sep = buildName.indexOf("/")) >= 0) {
 				buildName.replace(sep, sep + 1, "\\");
 			}
 			fullFileName = buildName.toString();
@@ -101,11 +87,9 @@ public class ArchiveFileBtdx extends ArchiveFile
 		long folderHash = new HashCode(folderName, true).getHash();
 		Folder folder = folderHashToFolderMap.get(folderHash);
 
-		if (folder != null)
-		{
+		if (folder != null) {
 			// do we need to load the files in this folder?
-			if (folder.fileToHashMap == null)
-			{
+			if (folder.fileToHashMap == null) {
 				System.out.println("BTDX folderName not indexed " + folderName);
 				return null;
 			}
@@ -114,14 +98,10 @@ public class ArchiveFileBtdx extends ArchiveFile
 			long fileHashCode = new HashCode(fileName, false).getHash();
 			String bsaFileName = filenameHashToFileNameMap.get(fileHashCode);
 
-			if (bsaFileName != null)
-			{
-				if (bsaFileName.equals(fileName))
-				{
+			if (bsaFileName != null) {
+				if (bsaFileName.equals(fileName)) {
 					return folder.fileToHashMap.get(fileHashCode);
-				}
-				else
-				{
+				} else {
 					System.out.println("BSA File name mismatch: " + bsaFileName + " " + fileName);
 				}
 			}
@@ -131,76 +111,58 @@ public class ArchiveFileBtdx extends ArchiveFile
 	}
 
 	@Override
-	protected void loadFolder(Folder folder) throws IOException
-	{
+	protected void loadFolder(Folder folder) throws IOException {
 		throw new UnsupportedOperationException("BTDX is loaded at inital load time, so this should never be called");
 	}
 
 	@Override
-	public InputStream getInputStream(ArchiveEntry entry) throws IOException
-	{
-		if (in == null)
-		{
+	public InputStream getInputStream(ArchiveEntry entry) throws IOException {
+		if (in == null) {
 			throw new IOException("Archive file is not open");
 		}
 
-		if (bsaFileType == BsaFileType.DX10)
-		{
+		if (bsaFileType == BsaFileType.DX10) {
 			return new ArchiveInputStreamDX10(in, entry);
-		}
-		else
-		{
+		} else {
 			return new ArchiveInputStream(in, entry);
 		}
 	}
 
 	@Override
-	public ByteBuffer getByteBuffer(ArchiveEntry entry) throws IOException
-	{
-		if (in == null)
-		{
+	public ByteBuffer getByteBuffer(ArchiveEntry entry) throws IOException {
+		if (in == null) {
 			throw new IOException("Archive file is not open");
 		}
 
-		if (bsaFileType == BsaFileType.DX10)
-		{
+		if (bsaFileType == BsaFileType.DX10) {
 			return ArchiveInputStreamDX10.getByteBuffer(in, entry, false);
-		}
-		else
-		{
+		} else {
 			return ArchiveInputStream.getByteBuffer(in, entry, false);
 		}
 	}
 
 	@Override
-	public ByteBuffer getByteBuffer(ArchiveEntry entry, boolean allocateDirect) throws IOException
-	{
-		if (in == null)
-		{
+	public ByteBuffer getByteBuffer(ArchiveEntry entry, boolean allocateDirect) throws IOException {
+		if (in == null) {
 			throw new IOException("Archive file is not open");
 		}
 
-		if (bsaFileType == BsaFileType.DX10)
-		{
+		if (bsaFileType == BsaFileType.DX10) {
 			return ArchiveInputStreamDX10.getByteBuffer(in, entry, allocateDirect);
-		}
-		else
-		{
+		} else {
 			return ArchiveInputStream.getByteBuffer(in, entry, allocateDirect);
 		}
 	}
 
 	@Override
-	public void load(boolean isForDisplay) throws DBException, IOException
-	{
-		if (file.length() > Integer.MAX_VALUE || !USE_FILE_MAPS)
-			in = new RandomAccessFile(file, "r");
+	public void load(boolean isForDisplay) throws DBException, IOException {
+		if (file.size() > Integer.MAX_VALUE || !USE_FILE_MAPS)
+			in = new FileChannelRAF(file, "r");
 		else
-			in = new MappedByteBufferRAF(file, "r");
+			in = new FileChannelRAF(file, "r");
 
 		// lock just in case anyone else tries an early read
-		synchronized (in)
-		{
+		synchronized (in) {
 			// load header
 			byte header[] = new byte[24];
 
@@ -210,10 +172,10 @@ public class ArchiveFileBtdx extends ArchiveFile
 
 			String id = new String(header, 0, 4);
 			if (!id.equals("BTDX"))
-				throw new DBException("Archive file is not BTDX id " + id + " " + file.getAbsolutePath());
+				throw new DBException("Archive file is not BTDX id " + id + " " + fileName);
 			version = getInteger(header, 4);
 			if (version != 1)
-				throw new DBException("BSA version " + version + " is not supported " + file.getAbsolutePath());
+				throw new DBException("BSA version " + version + " is not supported " + fileName);
 
 			String type = new String(header, 8, 4); // GRNL or DX10
 			if (type.equals("GNRL"))
@@ -221,7 +183,7 @@ public class ArchiveFileBtdx extends ArchiveFile
 			else if (type.equals("DX10"))
 				bsaFileType = BsaFileType.DX10;
 			else
-				throw new DBException("BSA bsaFileType " + type + " is not supported " + file.getAbsolutePath());
+				throw new DBException("BSA bsaFileType " + type + " is not supported " + fileName);
 
 			fileCount = getInteger(header, 12);
 			long nameTableOffset = getLong(header, 16);
@@ -238,17 +200,16 @@ public class ArchiveFileBtdx extends ArchiveFile
 			// load fileNameBlock
 			byte[] nameBuffer = new byte[0x10000];
 
-			for (int i = 0; i < fileCount; i++)
-			{
+			for (int i = 0; i < fileCount; i++) {
 				byte[] b = new byte[2];
 				in.read(b);
 				int len = getShort(b, 0);
 
 				in.read(nameBuffer, 0, len);
-				nameBuffer[len] = 0;
+				nameBuffer [len] = 0;
 
 				String filename = new String(nameBuffer, 0, len);
-				fileNames[i] = filename;
+				fileNames [i] = filename;
 			}
 
 			// build up a trival folderhash from all the file names
@@ -260,27 +221,22 @@ public class ArchiveFileBtdx extends ArchiveFile
 			filenameHashToFileNameMap = new LongSparseArray<String>(fileCount);
 
 			byte[] buffer = null;
-			if (bsaFileType == BsaFileType.GNRL)
-			{
+			if (bsaFileType == BsaFileType.GNRL) {
 				// we can read it all up front in this case
 				buffer = new byte[fileCount * 36];
 				in.read(buffer);
-			}
-			else
-			{
+			} else {
 				buffer = new byte[24];
 			}
 
-			for (int i = 0; i < fileCount; i++)
-			{
-				String fullFileName = fileNames[i].toLowerCase();
+			for (int i = 0; i < fileCount; i++) {
+				String fullFileName = fileNames [i].toLowerCase();
 				int pathSep = fullFileName.lastIndexOf("\\");
 				String folderName = fullFileName.substring(0, pathSep);
 				long folderHash = new HashCode(folderName, true).getHash();
 				Folder folder = folderHashToFolderMap.get(folderHash);
 
-				if (folder == null)
-				{
+				if (folder == null) {
 					folder = new Folder(0, -1, isForDisplay);
 					folder.folderName = folderName;
 					folder.fileToHashMap = new LongSparseArray<ArchiveEntry>();
@@ -291,24 +247,21 @@ public class ArchiveFileBtdx extends ArchiveFile
 				long fileHashCode = new HashCode(fileName, false).getHash();
 				filenameHashToFileNameMap.put(fileHashCode, fileName);
 
-				if (bsaFileType == BsaFileType.GNRL)
-				{
+				if (bsaFileType == BsaFileType.GNRL) {
 					ArchiveEntry entry;
 					if (isForDisplay)
 						entry = new DisplayableArchiveEntry(this, folder.folderName, fileName);
 					else
 						entry = new ArchiveEntry(this, folder.folderName, fileName);
 
-					
-
 					// int nameHash = getInteger(buffer, i*36+0);// 00 - name hash?
 					// String ext = new String(buffer, 4,i*36+ 4); // 04 - extension
 					// int dirHash = getInteger(buffer, i*36+8); // 08 - directory hash?
 					// int unk0C = getInteger(buffer, i*36+12); // 0C - flags? 00100100
-					long offset = getLong(buffer, i*36+16); // 10 - relative to start of file
-					int packedLen = getInteger(buffer, i*36+24); // 18 - packed length (zlib)
-					int unpackedLen = getInteger(buffer, i*36+28); // 1C - unpacked length
-					int unk20 = getInteger(buffer, i*36+32); // 20 - BAADF00D
+					long offset = getLong(buffer, i * 36 + 16); // 10 - relative to start of file
+					int packedLen = getInteger(buffer, i * 36 + 24); // 18 - packed length (zlib)
+					int unpackedLen = getInteger(buffer, i * 36 + 28); // 1C - unpacked length
+					int unk20 = getInteger(buffer, i * 36 + 32); // 20 - BAADF00D
 
 					entry.setFileOffset(offset);
 					entry.setFileLength(unpackedLen);
@@ -321,9 +274,7 @@ public class ArchiveFileBtdx extends ArchiveFile
 					entry.setCompressedLength(compLen);
 					folder.fileToHashMap.put(fileHashCode, entry);
 					folder.folderFileCount++;
-				}
-				else
-				{
+				} else {
 					ArchiveEntryDX10 entry;
 					if (isForDisplay)
 						entry = new DisplayableArchiveEntryDX10(this, folder.folderName, fileName);
@@ -335,29 +286,27 @@ public class ArchiveFileBtdx extends ArchiveFile
 					// String ext = new String(buffer, 4, 4); // 04 - extension
 					// int dirHash = getInteger(buffer, 8); // 08 - directory hash?
 					// int unk0C= buffer[12]& 0xff; //
-					entry.numChunks = buffer[13] & 0xff; //
+					entry.numChunks = buffer [13] & 0xff; //
 					entry.chunkHdrLen = getShort(buffer, 14); // - size of one chunk header
 					entry.height = getShort(buffer, 16); //
 					entry.width = getShort(buffer, 18); //					
-					entry.numMips = buffer[20] & 0xff; //
-					entry.format = buffer[21] & 0xff; // - DXGI_FORMAT
+					entry.numMips = buffer [20] & 0xff; //
+					entry.format = buffer [21] & 0xff; // - DXGI_FORMAT
 					entry.unk16 = getShort(buffer, 22); // - 0800
 
-					if (entry.numChunks != 0)
-					{
+					if (entry.numChunks != 0) {
 						entry.chunks = new DX10Chunk[entry.numChunks];
 						//read them all off at once
 						byte[] chunkBuffer = new byte[entry.numChunks * 24];
 						in.read(chunkBuffer);
-						for (int c = 0; c < entry.numChunks; c++)
-						{
-							entry.chunks[c] = new DX10Chunk();
-							entry.chunks[c].offset = getLong(chunkBuffer, (c * 24) + 0); // 00
-							entry.chunks[c].packedLen = getInteger(chunkBuffer, (c * 24) + 8); // 08
-							entry.chunks[c].unpackedLen = getInteger(chunkBuffer, (c * 24) + 12); // 0C
-							entry.chunks[c].startMip = getShort(chunkBuffer, (c * 24) + 16); // 10
-							entry.chunks[c].endMip = getShort(chunkBuffer, (c * 24) + 18); // 12
-							entry.chunks[c].unk14 = getInteger(chunkBuffer, (c * 24) + 20); // 14 - BAADFOOD
+						for (int c = 0; c < entry.numChunks; c++) {
+							entry.chunks [c] = new DX10Chunk();
+							entry.chunks [c].offset = getLong(chunkBuffer, (c * 24) + 0); // 00
+							entry.chunks [c].packedLen = getInteger(chunkBuffer, (c * 24) + 8); // 08
+							entry.chunks [c].unpackedLen = getInteger(chunkBuffer, (c * 24) + 12); // 0C
+							entry.chunks [c].startMip = getShort(chunkBuffer, (c * 24) + 16); // 10
+							entry.chunks [c].endMip = getShort(chunkBuffer, (c * 24) + 18); // 12
+							entry.chunks [c].unk14 = getInteger(chunkBuffer, (c * 24) + 20); // 14 - BAADFOOD
 						}
 					}
 
@@ -371,32 +320,27 @@ public class ArchiveFileBtdx extends ArchiveFile
 	}
 
 	@Override
-	public boolean hasNifOrKf()
-	{
+	public boolean hasNifOrKf() {
 		return bsaFileType == BsaFileType.GNRL;
 	}
 
 	@Override
-	public boolean hasDDS()
-	{
+	public boolean hasDDS() {
 		return bsaFileType == BsaFileType.DX10;
 	}
 
 	@Override
-	public boolean hasSounds()
-	{
+	public boolean hasSounds() {
 		return bsaFileType == BsaFileType.GNRL;
 	}
 
 	@Override
-	public boolean hasKTX()
-	{
+	public boolean hasKTX() {
 		return false;
 	}
 
 	@Override
-	public boolean hasASTC()
-	{
+	public boolean hasASTC() {
 		return false;
 	}
 
