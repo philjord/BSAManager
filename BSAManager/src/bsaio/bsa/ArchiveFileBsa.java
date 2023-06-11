@@ -30,7 +30,7 @@ public class ArchiveFileBsa extends ArchiveFile {
 
 	private boolean					isForDisplay	= false;
 
-	//tODO: I don't need the file name, it should never be given out, just used as a look up
+	//TODO: I don't need the file name, it should never be given out, just used as a look up
 	private LongSparseArray<String>	filenameHashToFileNameMap;
 
 	public ArchiveFileBsa(FileChannel file, String fileName) {

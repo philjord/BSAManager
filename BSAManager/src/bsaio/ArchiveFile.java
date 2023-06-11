@@ -148,7 +148,7 @@ public abstract class ArchiveFile {
 		}
 	}
 
-	//Notice isFroDisplay unused here due to trouble with other sorts of ArchiveFile
+	//Notice isForDisplay unused here due to trouble with other sorts of ArchiveFile
 	public Folder getFolder(String folderName, boolean isForDisplay) {
 
 		StringBuilder buildName = new StringBuilder(folderName.toLowerCase());

@@ -8,6 +8,18 @@ public abstract class BSArchiveSet extends ArrayList<ArchiveFile> {
 	public ArrayList<Thread>	loadThreads	= new ArrayList<Thread>();
 
 	private String				name		= "";
+	
+	private boolean isForDisplay = false;
+	
+	public BSArchiveSet() {
+		
+	}
+	 
+	public BSArchiveSet(boolean isForDisplay) {
+		this.isForDisplay = isForDisplay;
+	}
+	
+	
 
 	/**
 	 * No display archive loader
@@ -27,7 +39,7 @@ public abstract class BSArchiveSet extends ArrayList<ArchiveFile> {
 					long start = System.currentTimeMillis();
 					System.out.println("BSA File Set loading " + fileName);
 					ArchiveFile archiveFile = ArchiveFile.createArchiveFile(file, fileName);
-					archiveFile.load(false);
+					archiveFile.load(isForDisplay);
 					synchronized (BSArchiveSet.this) {
 						add(archiveFile);
 					}
