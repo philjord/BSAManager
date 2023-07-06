@@ -246,10 +246,9 @@ public abstract class ArchiveFile {
 	}
 
 	protected static long getLong(byte buffer[], int offset) {
-		return buffer [offset + 0]	& 255L	| (buffer [offset + 1] & 255L) << 8 | (buffer [offset + 2] & 255L) << 16
-				| (buffer [offset + 3] & 255L) << 24 | (buffer [offset + 4] & 255L) << 32
-				| (buffer [offset + 5] & 255L) << 40 | (buffer [offset + 6] & 255L) << 48
-				| (buffer [offset + 7] & 255L) << 56;
-	}
-
+		return    (buffer [offset + 0] & 255L) << 0  | (buffer [offset + 1] & 255L) << 8 
+				| (buffer [offset + 2] & 255L) << 16 | (buffer [offset + 3] & 255L) << 24
+				| (buffer [offset + 4] & 255L) << 32 | (buffer [offset + 5] & 255L) << 40
+				| (buffer [offset + 6] & 255L) << 48 | (buffer [offset + 7] & 255L) << 56;
+	}		
 }

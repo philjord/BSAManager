@@ -189,10 +189,14 @@ public class ArchiveFileBtdx extends ArchiveFile {
 			long nameTableOffset = getLong(header, 16);
 			// end of header read 24 bytes long
 
-			// now all the files header records exist in either General format or DX10 format
-
-			// but we are going to jump to the name table (which is after th file records)
-			in.seek(nameTableOffset);
+			// but we are going to jump to the name table (which is after the file records)
+			try {
+				in.seek(nameTableOffset);
+			} catch (IllegalArgumentException e) {
+				System.out.println(
+						"nameTableOffset " + nameTableOffset + " in file " + this.fileName + " is illegal, can't load");
+				return;
+			}
 
 			// ready
 			String[] fileNames = new String[fileCount];
