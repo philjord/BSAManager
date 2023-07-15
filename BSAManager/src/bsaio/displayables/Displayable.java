@@ -1,5 +1,7 @@
 package bsaio.displayables;
 
+import bsaio.ArchiveFile;
+
 public interface Displayable
 {
 
@@ -8,5 +10,7 @@ public interface Displayable
 	String getFolderName();
 
 	String getFileName();
+	
+	ArchiveFile getArchiveFile();
 
 }

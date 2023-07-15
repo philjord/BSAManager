@@ -193,9 +193,8 @@ public class ArchiveFileBtdx extends ArchiveFile {
 			try {
 				in.seek(nameTableOffset);
 			} catch (IllegalArgumentException e) {
-				System.out.println(
+				throw new DBException(
 						"nameTableOffset " + nameTableOffset + " in file " + this.fileName + " is illegal, can't load");
-				return;
 			}
 
 			// ready

@@ -39,8 +39,8 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 		for (int j = 0; j < tex.chunks.length; j++) {
 			requiredBufferSize += tex.chunks [j].unpackedLen;
 		}
-		// collect up all the chunks
-		ByteBuffer dst = ByteBuffer.allocateDirect(requiredBufferSize);
+		// to collect up all the chunks, note not direct as we want the byte[] behind it
+		ByteBuffer dst = ByteBuffer.allocate(requiredBufferSize);
 		dst.order(ByteOrder.LITTLE_ENDIAN);
 		insertHeader(tex, dst);
 		synchronized (in) {
