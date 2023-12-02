@@ -189,7 +189,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 				break;
 
 			default:
-				System.err.println("unhandled format %02X (%d) (%s) " + tex.format + " " + tex);
+				System.err.println("unhandled format " + tex.format + " " + tex);
 				return;
 		}
 

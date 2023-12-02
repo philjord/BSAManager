@@ -174,8 +174,10 @@ public class ArchiveFileBtdx extends ArchiveFile {
 			if (!id.equals("BTDX"))
 				throw new DBException("Archive file is not BTDX id " + id + " " + fileName);
 			version = getInteger(header, 4);
-			if (version != 1)
+			if (version > 2)
 				throw new DBException("BSA version " + version + " is not supported " + fileName);
+			if (version == 2)
+				System.out.println("BSA version " + version + " is not supported " + fileName);
 
 			String type = new String(header, 8, 4); // GRNL or DX10
 			if (type.equals("GNRL"))
@@ -233,7 +235,18 @@ public class ArchiveFileBtdx extends ArchiveFile {
 			}
 
 			for (int i = 0; i < fileCount; i++) {
+				
 				String fullFileName = fileNames [i].toLowerCase();
+				fullFileName = fullFileName.trim();
+				if (fullFileName.indexOf("/") != -1) {
+					StringBuilder buildName = new StringBuilder(fullFileName);
+					int sep;
+					while ((sep = buildName.indexOf("/")) >= 0) {
+						buildName.replace(sep, sep + 1, "\\");
+					}
+					fullFileName = buildName.toString();
+				}				
+				
 				int pathSep = fullFileName.lastIndexOf("\\");
 				String folderName = fullFileName.substring(0, pathSep);
 				long folderHash = new HashCode(folderName, true).getHash();
