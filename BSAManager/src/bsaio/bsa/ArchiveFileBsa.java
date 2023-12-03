@@ -17,8 +17,19 @@ import tools.io.FileChannelRAF;
 
 public class ArchiveFileBsa extends ArchiveFile {
 	private int						archiveFlags;				//in BSA id
+	
+	//if ((archiveFlags & 3) != 3)
+	//	throw new DBException("Archive does not use directory/file names " + fileName);
+
+	//isCompressed = (archiveFlags & 4) != 0;
+	//defaultCompressed = (archiveFlags & 0x100) != 0;// note value=256 (this is hex not binary)
 
 	private int						fileFlags;					//in BSA id
+	
+//	public boolean hasNifOrKf() {	return (fileFlags & 1) != 0 || (fileFlags & 0x40) != 0;
+//	public boolean hasDDS() {		return (fileFlags & 2) != 0;
+//	public boolean hasSounds() {		return (fileFlags & 8) != 0 || (fileFlags & 0x10) != 0;
+		
 
 	private boolean					isCompressed;
 
@@ -275,8 +286,8 @@ public class ArchiveFileBsa extends ArchiveFile {
 			if ((archiveFlags & 3) != 3)
 				throw new DBException("Archive does not use directory/file names " + fileName);
 
-			isCompressed = (archiveFlags & 4) != 0;//WTF is the difference?
-			defaultCompressed = (archiveFlags & 0x100) != 0;
+			isCompressed = (archiveFlags & 4) != 0;
+			defaultCompressed = (archiveFlags & 0x100) != 0;// note value=256 (this is hex not binary)
 
 			//load fileNameBlock
 			byte[] nameBuffer = new byte[fileNamesLength];
