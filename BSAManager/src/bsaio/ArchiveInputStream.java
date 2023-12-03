@@ -54,7 +54,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 					in.seek(entry.getFileOffset());
 					int c = in.read(dataBufferIn, 0, compressedLength);
 					if (c < 0)
-						throw new EOFException("Unexpected end of stream while inflating file");
+						throw new EOFException("Unexpected end of stream while inflating file " + entry.getFileName());
 				}
 			}
 
@@ -72,9 +72,10 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 				try {
 					int count = inflater2.inflate(dataBufferOut);
 					if (count != entry.getFileLength())
-						System.err.println("Inflate count issue! " + this);
+						System.err.println("Inflate count issue! " + entry.getFileName());
 
 				} catch (DataFormatException e) {
+					System.out.println("Entry infaltion issue " + entry.getFileName());
 					e.printStackTrace();
 				}
 			}
@@ -92,7 +93,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 					in.seek(entry.getFileOffset());
 					int c = in.read(dataBufferOut, 0, entry.getFileLength());
 					if (c < 0)
-						throw new EOFException("Unexpected end of stream while inflating file");
+						throw new EOFException("Unexpected end of stream while inflating file " + entry.getFileName());
 				}
 			}
 		}
@@ -141,7 +142,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 					in.seek(entry.getFileOffset());
 					int c = in.read(dataBufferIn, 0, compressedLength);
 					if (c < 0)
-						throw new EOFException("Unexpected end of stream while inflating file");
+						throw new EOFException("Unexpected end of stream while inflating file " + entry.getFileName());
 				}
 
 			}
@@ -161,7 +162,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 					{
 						int count = inflater.inflate(dataBufferOut);
 						if (count != entry.getFileLength())
-							System.err.println("Inflate count issue! " + entry);
+							System.err.println("Inflate count issue!  " + entry.getFileName());
 					}
 				} catch (DataFormatException e) {
 					e.printStackTrace();
@@ -191,7 +192,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 					in.seek(entry.getFileOffset());
 					int c = in.read(dataBufferOut, 0, entry.getFileLength());
 					if (c < 0)
-						throw new EOFException("Unexpected end of stream while inflating file");
+						throw new EOFException("Unexpected end of stream while inflating file " + entry.getFileName());
 				}
 			}
 		}
