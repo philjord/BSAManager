@@ -222,8 +222,13 @@ public class ArchiveFileTes3 extends ArchiveFile {
 	}
 
 	@Override
-	public boolean hasDDS() {
+	public boolean hasTextureFiles() {
 		return true;
+	}
+	
+	@Override
+	public boolean hasDDS() {
+		return hasTextureFiles();// we don't put ktx into tes3 format bsa files
 	}
 
 	@Override

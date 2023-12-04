@@ -341,7 +341,7 @@ public class ArchiveFileBtdx extends ArchiveFile {
 	}
 
 	@Override
-	public boolean hasDDS() {
+	public boolean hasTextureFiles() {
 		return bsaFileType == BsaFileType.DX10;
 	}
 
@@ -350,6 +350,11 @@ public class ArchiveFileBtdx extends ArchiveFile {
 		return bsaFileType == BsaFileType.GNRL;
 	}
 
+	@Override
+	public boolean hasDDS() {
+		return hasTextureFiles();// we don't put ktx into btdx format bsa files, yet
+	}
+	
 	@Override
 	public boolean hasKTX() {
 		return false;

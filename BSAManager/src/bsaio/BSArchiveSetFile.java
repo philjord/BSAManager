@@ -3,6 +3,7 @@ package bsaio;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 
 public class BSArchiveSetFile extends BSArchiveSet {
 	/**
@@ -30,18 +31,14 @@ public class BSArchiveSetFile extends BSArchiveSet {
 
 						for (File file : rootFile.listFiles()) {
 							if (file.getName().toLowerCase().endsWith(".bsa") //
-								|| file.getName().toLowerCase().endsWith(".ba2")//
-								|| file.getName().toLowerCase().endsWith(".obb")) //android expansion file name
-							{
+								|| file.getName().toLowerCase().endsWith(".ba2")) {
 								FileInputStream fis = new FileInputStream(file);
 								loadFile(fis.getChannel(), file.getName());
 							}
 						}
 					} else {
 						if (!rootFile.isDirectory() && (rootFile.getName().toLowerCase().endsWith(".bsa") //
-														|| rootFile.getName().toLowerCase().endsWith(".ba2")//
-														|| rootFile.getName().toLowerCase().endsWith(".obb")//
-						)) {
+														|| rootFile.getName().toLowerCase().endsWith(".ba2"))) {
 							FileInputStream fis = new FileInputStream(rootFile);
 							loadFile(fis.getChannel(), rootFile.getName());
 						} else {
@@ -69,5 +66,18 @@ public class BSArchiveSetFile extends BSArchiveSet {
 		if (this.size() == 0) {
 			System.out.println("BSAFileSet loaded no files using root: " + rootFilenames [0]);
 		}
+	}
+	
+	public void loadFileAndWait(final FileChannel file, String fileName){
+		loadFile(file, fileName);
+		for (Thread loadTask : loadThreads) {
+			try {
+				loadTask.join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}		
+
+		loadThreads.clear();
 	}
 }

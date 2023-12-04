@@ -34,6 +34,8 @@ public class ArchiveFileBsa extends ArchiveFile {
 	private boolean					isCompressed;
 
 	private boolean					defaultCompressed;
+	
+	private boolean					hasDDSFiles		= false;
 
 	private boolean					hasKTXFiles		= false;
 
@@ -319,6 +321,8 @@ public class ArchiveFileBsa extends ArchiveFile {
 				fileNames [nameIndex] = filename;
 				//these must be loaded and hashed now as the folder only has the hash values in it
 				filenameHashToFileNameMap.put(new HashCode(filename, false).getHash(), filename);
+				
+				hasDDSFiles = hasDDSFiles || filename.endsWith("dds");
 
 				hasKTXFiles = hasKTXFiles || filename.endsWith("ktx");
 
@@ -358,10 +362,15 @@ public class ArchiveFileBsa extends ArchiveFile {
 	}
 
 	@Override
-	public boolean hasDDS() {
+	public boolean hasTextureFiles() {
 		return (fileFlags & 2) != 0;
 	}
-
+	
+	@Override
+	public boolean hasDDS() {
+		return hasDDSFiles;
+	}
+	
 	@Override
 	public boolean hasKTX() {
 		return hasKTXFiles;

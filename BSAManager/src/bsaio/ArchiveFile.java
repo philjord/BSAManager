@@ -228,6 +228,8 @@ public abstract class ArchiveFile {
 
 	public abstract boolean hasNifOrKf();
 
+	public abstract boolean hasTextureFiles();
+	
 	public abstract boolean hasDDS();
 
 	public abstract boolean hasKTX();
@@ -250,5 +252,7 @@ public abstract class ArchiveFile {
 				| (buffer [offset + 2] & 255L) << 16 | (buffer [offset + 3] & 255L) << 24
 				| (buffer [offset + 4] & 255L) << 32 | (buffer [offset + 5] & 255L) << 40
 				| (buffer [offset + 6] & 255L) << 48 | (buffer [offset + 7] & 255L) << 56;
-	}		
+	}
+
+	
 }
