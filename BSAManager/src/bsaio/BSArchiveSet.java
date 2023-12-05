@@ -57,7 +57,18 @@ public abstract class BSArchiveSet extends ArrayList<ArchiveFile> {
 		t.start();
 
 	}
+	public void loadFileAndWait(final FileChannel file, String fileName){
+		loadFile(file, fileName);
+		for (Thread loadTask : loadThreads) {
+			try {
+				loadTask.join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}		
 
+		loadThreads.clear();
+	}
 	public void close() throws IOException {
 		for (ArchiveFile af : this) {
 			af.close();

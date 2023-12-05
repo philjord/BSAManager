@@ -68,16 +68,5 @@ public class BSArchiveSetFile extends BSArchiveSet {
 		}
 	}
 	
-	public void loadFileAndWait(final FileChannel file, String fileName){
-		loadFile(file, fileName);
-		for (Thread loadTask : loadThreads) {
-			try {
-				loadTask.join();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}		
-
-		loadThreads.clear();
-	}
+	
 }
