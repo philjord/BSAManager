@@ -175,7 +175,12 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 				synchronized (in) {
 					FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
 					FileChannel ch = in.getChannel();
-					mappedByteBuffer = ch.map(mm, entry.getFileOffset(), entry.getFileLength());
+					if (entry.getFileOffset() > 0 && entry.getFileLength() > 0)
+						mappedByteBuffer = ch.map(mm, entry.getFileOffset(), entry.getFileLength());
+					else
+						throw new EOFException("Unexpected mapping values entry.getFileOffset() "
+												+ entry.getFileOffset() + " entry.getFileLength() "
+												+ entry.getFileLength() + " " + entry.getFileName());
 				}
 
 				// dear god, protect us
