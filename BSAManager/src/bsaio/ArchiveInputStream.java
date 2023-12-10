@@ -67,10 +67,10 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 				inflater.end();
 			} else {
 
-				Inflater inflater2 = new Inflater();
-				inflater2.setInput(dataBufferIn);
+				Inflater inflater = new Inflater();
+				inflater.setInput(dataBufferIn);
 				try {
-					int count = inflater2.inflate(dataBufferOut);
+					int count = inflater.inflate(dataBufferOut);
 					if (count != entry.getFileLength())
 						System.err.println("Inflate count issue! " + entry.getFileName());
 
@@ -78,6 +78,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 					System.out.println("Entry infaltion issue " + entry.getFileName());
 					e.printStackTrace();
 				}
+				inflater.end();
 			}
 		} else {
 			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE) {
