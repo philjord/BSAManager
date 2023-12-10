@@ -155,7 +155,6 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 				inflater.inflate(4);//Z_FINISH
 				inflater.end();
 			} else {
-
 				Inflater inflater = new Inflater();
 				inflater.setInput(dataBufferIn);
 				try {
@@ -167,6 +166,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 				} catch (DataFormatException e) {
 					e.printStackTrace();
 				}
+				inflater.end();
 			}
 
 		} else {
