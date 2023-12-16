@@ -273,8 +273,12 @@ public class ArchiveFileBsa extends ArchiveFile {
 				throw new DBException("Archive id is bad " + id + " " + fileName);
 
 			version = getInteger(header, 4);
-			if (version != 104 && version != 103)
+			if (version != 104 && version != 103) {
+				if(version == ArchiveFile.PARTIAL_FILE) {
+					System.out.println("BSA is in partial state, it is presumably being converted from DDS to KTX " + fileName);
+				}
 				throw new DBException("BSA version " + version + " is not supported " + fileName);
+			}
 
 			long folderOffset = getInteger(header, 8) & 0xffffffffL;
 			archiveFlags = getInteger(header, 12);

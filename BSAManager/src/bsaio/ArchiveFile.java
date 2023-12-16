@@ -24,7 +24,8 @@ public abstract class ArchiveFile {
 
 	protected SIG						sig;
 
-	protected int						version;
+	protected int						version;// 104 is FO3 and TES5, 103 is TES4
+	public static final int				PARTIAL_FILE		= 14233412;
 
 	protected FileChannel				file;
 	protected String					fileName;
