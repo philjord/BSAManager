@@ -74,7 +74,7 @@ public class HashCode implements Comparable<HashCode>
 				hash |= 32768L;
 			else if (ext.equals(".kf"))
 				hash |= 128L;
-			else if (ext.equals(".dds"))
+			else if (ext.equals(".dds"))// TODO: really should include this guy   || ext.equals(".ktx"))
 				hash |= 32896L;
 			else if (ext.equals(".wav"))
 				hash |= 0x80000000L;
@@ -86,16 +86,19 @@ public class HashCode implements Comparable<HashCode>
 		return hash;
 	}
 
+	@Override
 	public boolean equals(Object obj)
 	{
 		return (obj != null && (obj instanceof HashCode) && ((HashCode) obj).hash == hash);
 	}
 
+	@Override
 	public int compareTo(HashCode compare)
 	{
 		return hash == compare.hash ? 0 : (hash < compare.hash) ? -1 : 1;
 	}
 
+	@Override
 	public String toString()
 	{
 		return String.format("%08X-%08X", new Object[]
