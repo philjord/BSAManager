@@ -117,6 +117,12 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 		// not sure why this is bad, something weird with defaultcompressed flag the the archive load up
 		if (entry.getFileLength() == 0)
 			entry.setFileLength(entry.getCompressedLength());
+		
+		// biggest file seen nif file at about 12 meg, all great sizes are a bad entry
+		if (entry.getFileLength() < 0 || entry.getFileLength() > 16000000) {			
+			new Throwable("Bad ArchiveEntry info:" + entry.getFileName()).printStackTrace();
+			return null;
+		}
 
 		byte[] dataBufferOut = null;
 

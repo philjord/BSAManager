@@ -27,6 +27,12 @@ public class ArchiveFileBtdx extends ArchiveFile {
 	};
 
 	private BsaFileType				bsaFileType;				// in BTDX id
+	
+	private boolean					hasDDSFiles		= false;
+
+	private boolean					hasKTXFiles		= false;
+
+	private boolean					hasASTCFiles	= false;
 
 	private LongSparseArray<String>	filenameHashToFileNameMap;
 
@@ -215,6 +221,12 @@ public class ArchiveFileBtdx extends ArchiveFile {
 
 				String filename = new String(nameBuffer, 0, len);
 				fileNames [i] = filename;
+				
+				hasDDSFiles = hasDDSFiles || filename.endsWith("dds");
+
+				hasKTXFiles = hasKTXFiles || filename.endsWith("ktx");
+
+				hasASTCFiles = hasASTCFiles || filename.endsWith("astc");
 			}
 
 			// build up a trival folderhash from all the file names
@@ -342,7 +354,7 @@ public class ArchiveFileBtdx extends ArchiveFile {
 
 	@Override
 	public boolean hasTextureFiles() {
-		return bsaFileType == BsaFileType.DX10;
+		return hasDDSFiles || hasKTXFiles || hasASTCFiles; 
 	}
 
 	@Override
@@ -352,17 +364,17 @@ public class ArchiveFileBtdx extends ArchiveFile {
 
 	@Override
 	public boolean hasDDS() {
-		return hasTextureFiles();// we don't put ktx into btdx format bsa files, yet
+		return hasDDSFiles;
 	}
 	
 	@Override
 	public boolean hasKTX() {
-		return false;
+		return hasKTXFiles;
 	}
 
 	@Override
 	public boolean hasASTC() {
-		return false;
+		return hasASTCFiles;
 	}
 
 }
