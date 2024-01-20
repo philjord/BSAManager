@@ -136,12 +136,9 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 
 			//android can't take big files
 			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE) {
-				MappedByteBuffer mappedByteBuffer = null;
-				synchronized (in) {
 					FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
 					FileChannel ch = in.getChannel();
-					mappedByteBuffer = ch.map(mm, entry.getFileOffset(), compressedLength);
-				}
+				MappedByteBuffer mappedByteBuffer = ch.map(mm, entry.getFileOffset(), compressedLength);
 				mappedByteBuffer.get(dataBufferIn, 0, compressedLength);
 
 			} else {
@@ -165,21 +162,27 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 				Inflater inflater = new Inflater();
 				inflater.setInput(dataBufferIn);
 				try {
-					{
 						int count = inflater.inflate(dataBufferOut);
 						if (count != entry.getFileLength())
 							System.err.println("Inflate count issue!  " + entry.getFileName());
-					}
 				} catch (DataFormatException e) {
 					e.printStackTrace();
 				}
 				inflater.end();
 			}
 
+			if (!allocateDirect) {
+				return ByteBuffer.wrap(dataBufferOut);
+			} else {
+				ByteBuffer bb = ByteBuffer.allocateDirect(dataBufferOut.length);
+				bb.order(ByteOrder.nativeOrder());
+				bb.put(dataBufferOut);
+				bb.position(0);
+				return bb;
+			}
 		} else {
 			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE) {
 				MappedByteBuffer mappedByteBuffer = null;
-				synchronized (in) {
 					FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
 					FileChannel ch = in.getChannel();
 					if (entry.getFileOffset() > 0 && entry.getFileLength() > 0)
@@ -188,35 +191,25 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 						throw new EOFException("Unexpected mapping values entry.getFileOffset() "
 												+ entry.getFileOffset() + " entry.getFileLength() "
 												+ entry.getFileLength() + " " + entry.getFileName());
-				}
 
 				// dear god, protect us
 				if (ArchiveFile.RETURN_MAPPED_BYTE_BUFFERS)
 					return mappedByteBuffer;
 				else {
-					dataBufferOut = new byte[entry.getFileLength()];
-					mappedByteBuffer.get(dataBufferOut, 0, entry.getFileLength());
+					ByteBuffer bb = allocateDirect ? ByteBuffer.allocateDirect(entry.getFileLength()) : ByteBuffer.allocate(entry.getFileLength());
+					bb.put(mappedByteBuffer);
+					bb.position(0);
+					return bb;					
 				}
 
 			} else {
-				dataBufferOut = new byte[entry.getFileLength()];
-				synchronized (in) {
-					in.seek(entry.getFileOffset());
-					int c = in.read(dataBufferOut, 0, entry.getFileLength());
-					if (c < 0)
-						throw new EOFException("Unexpected end of stream while inflating file " + entry.getFileName());
-				}
-			}
-		}
-		if (!allocateDirect) {
-			return ByteBuffer.wrap(dataBufferOut);
-		} else {
-			ByteBuffer bb = ByteBuffer.allocateDirect(dataBufferOut.length);
-			bb.order(ByteOrder.nativeOrder());
-			bb.put(dataBufferOut);
+				FileChannel ch = in.getChannel();
+				ByteBuffer bb = allocateDirect ? ByteBuffer.allocateDirect(entry.getFileLength()) : ByteBuffer.allocate(entry.getFileLength());
+				ch.read(bb, entry.getFileOffset());
 			bb.position(0);
 			return bb;
 		}
 	}
 
+}
 }
