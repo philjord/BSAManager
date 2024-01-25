@@ -1,8 +1,3 @@
-// Decompiled by DJ v3.6.6.79 Copyright 2004 Atanas Neshkov Date: 5/27/2009 3:52:54 PM
-// Home Page : http://members.fortunecity.com/neshkov/dj.html - Check often for new version!
-// Decompiler options: packimports(3)
-// Source File Name: ArchiveInputStream.java
-
 package bsaio;
 
 import java.io.EOFException;
@@ -18,10 +13,6 @@ import org.jogamp.java3d.compressedtexture.FastByteArrayInputStream;
 
 import tools.io.FileChannelRAF;
 
-/**
- * @author philip
- *
- */
 public class ArchiveInputStream extends FastByteArrayInputStream {
 	public ArchiveInputStream(FileChannelRAF in, ArchiveEntry entry) throws IOException {
 		super(new byte[0]);//reset below once data is available
@@ -42,20 +33,14 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 			//android can't take big files
 			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE) {
 				MappedByteBuffer mappedByteBuffer = null;
-				synchronized (in) {
-					FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
-					FileChannel ch = in.getChannel();
-					mappedByteBuffer = ch.map(mm, entry.getFileOffset(), compressedLength);
-
-				}
+				FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
+				FileChannel ch = in.getChannel();
+				mappedByteBuffer = ch.map(mm, entry.getFileOffset(), compressedLength);
 				mappedByteBuffer.get(dataBufferIn, 0, compressedLength);
 			} else {
-				synchronized (in) {
-					in.seek(entry.getFileOffset());
-					int c = in.read(dataBufferIn, 0, compressedLength);
-					if (c < 0)
-						throw new EOFException("Unexpected end of stream while inflating file " + entry.getFileName());
-				}
+				FileChannel ch = in.getChannel();
+				ByteBuffer bb = ByteBuffer.wrap(dataBufferIn);
+				ch.read(bb, entry.getFileOffset());
 			}
 
 			if (ArchiveFile.USE_NON_NATIVE_ZIP) {
@@ -83,19 +68,15 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 		} else {
 			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE) {
 				MappedByteBuffer mappedByteBuffer = null;
-				synchronized (in) {
-					FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
-					FileChannel ch = in.getChannel();
-					mappedByteBuffer = ch.map(mm, entry.getFileOffset(), entry.getFileLength());
-				}
+				FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
+				FileChannel ch = in.getChannel();
+				mappedByteBuffer = ch.map(mm, entry.getFileOffset(), entry.getFileLength());
+
 				mappedByteBuffer.get(dataBufferOut, 0, entry.getFileLength());
 			} else {
-				synchronized (in) {
-					in.seek(entry.getFileOffset());
-					int c = in.read(dataBufferOut, 0, entry.getFileLength());
-					if (c < 0)
-						throw new EOFException("Unexpected end of stream while inflating file " + entry.getFileName());
-				}
+				FileChannel ch = in.getChannel();
+				ByteBuffer bb = ByteBuffer.wrap(dataBufferOut);
+				ch.read(bb, entry.getFileOffset());
 			}
 		}
 
@@ -136,19 +117,14 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 
 			//android can't take big files
 			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE) {
-					FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
-					FileChannel ch = in.getChannel();
+				FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
+				FileChannel ch = in.getChannel();
 				MappedByteBuffer mappedByteBuffer = ch.map(mm, entry.getFileOffset(), compressedLength);
 				mappedByteBuffer.get(dataBufferIn, 0, compressedLength);
-
 			} else {
-				synchronized (in) {
-					in.seek(entry.getFileOffset());
-					int c = in.read(dataBufferIn, 0, compressedLength);
-					if (c < 0)
-						throw new EOFException("Unexpected end of stream while inflating file " + entry.getFileName());
-				}
-
+				FileChannel ch = in.getChannel();
+				ByteBuffer bb = ByteBuffer.wrap(dataBufferIn);
+				ch.read(bb, entry.getFileOffset());				
 			}
 
 			if (ArchiveFile.USE_NON_NATIVE_ZIP) {
@@ -183,14 +159,14 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 		} else {
 			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE) {
 				MappedByteBuffer mappedByteBuffer = null;
-					FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
-					FileChannel ch = in.getChannel();
-					if (entry.getFileOffset() > 0 && entry.getFileLength() > 0)
-						mappedByteBuffer = ch.map(mm, entry.getFileOffset(), entry.getFileLength());
-					else
-						throw new EOFException("Unexpected mapping values entry.getFileOffset() "
-												+ entry.getFileOffset() + " entry.getFileLength() "
-												+ entry.getFileLength() + " " + entry.getFileName());
+				FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
+				FileChannel ch = in.getChannel();
+				if (entry.getFileOffset() > 0 && entry.getFileLength() > 0)
+					mappedByteBuffer = ch.map(mm, entry.getFileOffset(), entry.getFileLength());
+				else
+					throw new EOFException("Unexpected mapping values entry.getFileOffset() "
+											+ entry.getFileOffset() + " entry.getFileLength() "
+											+ entry.getFileLength() + " " + entry.getFileName());
 
 				// dear god, protect us
 				if (ArchiveFile.RETURN_MAPPED_BYTE_BUFFERS)
@@ -201,15 +177,14 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 					bb.position(0);
 					return bb;					
 				}
-
 			} else {
 				FileChannel ch = in.getChannel();
 				ByteBuffer bb = allocateDirect ? ByteBuffer.allocateDirect(entry.getFileLength()) : ByteBuffer.allocate(entry.getFileLength());
 				ch.read(bb, entry.getFileOffset());
-			bb.position(0);
-			return bb;
+				bb.position(0);
+				return bb;
+			}
 		}
+	
 	}
-
-}
 }
