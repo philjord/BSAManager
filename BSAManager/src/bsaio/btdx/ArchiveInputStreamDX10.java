@@ -4,7 +4,6 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
@@ -12,7 +11,6 @@ import java.util.zip.Inflater;
 import org.jogamp.java3d.compressedtexture.FastByteArrayInputStream;
 
 import bsaio.ArchiveEntry;
-import bsaio.ArchiveFile;
 import bsaio.btdx.ArchiveEntryDX10.DX10Chunk;
 import bsaio.btdx.DDS_HEADER.DDS_HEADER_DXT10;
 import bsaio.btdx.DDS_HEADER.DDS_PIXELFORMAT;
@@ -34,6 +32,8 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 	public ArchiveInputStreamDX10(FileChannelRAF in, ArchiveEntry entry) throws IOException {
 		super(new byte[0]);//reset below once data is availble
 
+		FileChannel ch = in.getChannel();
+		
 		ArchiveEntryDX10 tex = (ArchiveEntryDX10)entry;
 		int requiredBufferSize = 32 * 4;
 		for (int j = 0; j < tex.chunks.length; j++) {
@@ -61,28 +61,18 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 				dstBuff = new byte[chunk.unpackedLen];
 
 			//byte[] srcBuf = new byte[chunk.packedLen];
-			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE) {
-				FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
-				FileChannel ch = in.getChannel();
-				MappedByteBuffer mappedByteBuffer = ch.map(mm, chunk.offset, chunk.packedLen);
-
-				mappedByteBuffer.get(srcBuf, 0, chunk.packedLen);
-			} else {
-				in.seek(chunk.offset);
-				int c = in.read(srcBuf, 0, chunk.packedLen);
-				if (c < 0)
-					throw new EOFException("Unexpected end of stream while inflating file");
-			}
+			int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
+			
+			if (c < 0)
+				throw new EOFException("Unexpected end of stream while inflating file");
 
 			inflater.reset();
 			inflater.setInput(srcBuf, 0, chunk.packedLen);
 
 			try {
-
 				int count = inflater.inflate(dstBuff);
 				if (count != chunk.unpackedLen)
 					System.err.println("Inflate count issue! " + this);
-
 			} catch (DataFormatException e) {
 				e.printStackTrace();
 			}
@@ -247,7 +237,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 	 */
 	public static ByteBuffer getByteBuffer(FileChannelRAF in, ArchiveEntry entry, boolean allocateDirect)
 			throws IOException {
-
+		FileChannel ch = in.getChannel();
 		ArchiveEntryDX10 tex = (ArchiveEntryDX10)entry;
 		int requiredBufferSize = 32 * 4;
 		for (int j = 0; j < tex.chunks.length; j++) {
@@ -266,7 +256,6 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 		insertHeader(tex, dst);
 
 		//FIXME:!!! no check for isCompressed!!
-		//Notice Mapped_uncompressed no possible by a loooong way
 
 		// Java straight inflate load near =13sec
 		Inflater inflater = new Inflater();
@@ -283,18 +272,9 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 				dstBuff = new byte[chunk.unpackedLen];
 
 			//byte[] srcBuf = new byte[chunk.packedLen];
-			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE) {
-				FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
-				FileChannel ch = in.getChannel();
-				MappedByteBuffer mappedByteBuffer = ch.map(mm, chunk.offset, chunk.packedLen);
-
-				mappedByteBuffer.get(srcBuf, 0, chunk.packedLen);
-			} else {
-				in.seek(chunk.offset);
-				int c = in.read(srcBuf, 0, chunk.packedLen);
-				if (c < 0)
-					throw new EOFException("Unexpected end of stream while inflating file");
-			}
+			int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
+			if (c < 0)
+				throw new EOFException("Unexpected end of stream while inflating file");
 
 			inflater.reset();
 			inflater.setInput(srcBuf, 0, chunk.packedLen);

@@ -1,10 +1,8 @@
 package bsaio;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
@@ -16,7 +14,8 @@ import tools.io.FileChannelRAF;
 public class ArchiveInputStream extends FastByteArrayInputStream {
 	public ArchiveInputStream(FileChannelRAF in, ArchiveEntry entry) throws IOException {
 		super(new byte[0]);//reset below once data is available
-
+		FileChannel ch = in.getChannel();
+		
 		// not sure why this is bad, something weird with defaultcompressed flag the the archive load up
 		if (entry.getFileLength() == 0)
 			entry.setFileLength(entry.getCompressedLength());
@@ -30,54 +29,23 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 			int compressedLength = entry.getCompressedLength();
 			byte[] dataBufferIn = new byte[compressedLength];
 
-			//android can't take big files
-			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE) {
-				MappedByteBuffer mappedByteBuffer = null;
-				FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
-				FileChannel ch = in.getChannel();
-				mappedByteBuffer = ch.map(mm, entry.getFileOffset(), compressedLength);
-				mappedByteBuffer.get(dataBufferIn, 0, compressedLength);
-			} else {
-				FileChannel ch = in.getChannel();
-				ByteBuffer bb = ByteBuffer.wrap(dataBufferIn);
-				ch.read(bb, entry.getFileOffset());
+			ch.read(ByteBuffer.wrap(dataBufferIn), entry.getFileOffset());
+
+			Inflater inflater = new Inflater();
+			inflater.setInput(dataBufferIn);
+			try {
+				int count = inflater.inflate(dataBufferOut);
+				if (count != entry.getFileLength())
+					System.err.println("Inflate count issue! " + entry.getFileName());
+
+			} catch (DataFormatException e) {
+				System.out.println("Entry infaltion issue " + entry.getFileName());
+				e.printStackTrace();
 			}
+			inflater.end();
 
-			if (ArchiveFile.USE_NON_NATIVE_ZIP) {
-				//JCraft version slower - though I wonder about android? seems real slow too
-				com.jcraft.jzlib.Inflater inflater = new com.jcraft.jzlib.Inflater();
-				inflater.setInput(dataBufferIn);
-				inflater.setOutput(dataBufferOut);
-				inflater.inflate(4);//Z_FINISH
-				inflater.end();
-			} else {
-
-				Inflater inflater = new Inflater();
-				inflater.setInput(dataBufferIn);
-				try {
-					int count = inflater.inflate(dataBufferOut);
-					if (count != entry.getFileLength())
-						System.err.println("Inflate count issue! " + entry.getFileName());
-
-				} catch (DataFormatException e) {
-					System.out.println("Entry infaltion issue " + entry.getFileName());
-					e.printStackTrace();
-				}
-				inflater.end();
-			}
 		} else {
-			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE) {
-				MappedByteBuffer mappedByteBuffer = null;
-				FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
-				FileChannel ch = in.getChannel();
-				mappedByteBuffer = ch.map(mm, entry.getFileOffset(), entry.getFileLength());
-
-				mappedByteBuffer.get(dataBufferOut, 0, entry.getFileLength());
-			} else {
-				FileChannel ch = in.getChannel();
-				ByteBuffer bb = ByteBuffer.wrap(dataBufferOut);
-				ch.read(bb, entry.getFileOffset());
-			}
+			ch.read(ByteBuffer.wrap(dataBufferOut), entry.getFileOffset());
 		}
 
 		this.buf = dataBufferOut;
@@ -94,7 +62,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 	 */
 	public static ByteBuffer getByteBuffer(FileChannelRAF in, ArchiveEntry entry, boolean allocateDirect)
 			throws IOException {
-
+		FileChannel ch = in.getChannel();
 		// not sure why this is bad, something weird with defaultcompressed flag the the archive load up
 		if (entry.getFileLength() == 0)
 			entry.setFileLength(entry.getCompressedLength());
@@ -115,37 +83,18 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 			int compressedLength = entry.getCompressedLength();
 			byte[] dataBufferIn = new byte[compressedLength];
 
-			//android can't take big files
-			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE) {
-				FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
-				FileChannel ch = in.getChannel();
-				MappedByteBuffer mappedByteBuffer = ch.map(mm, entry.getFileOffset(), compressedLength);
-				mappedByteBuffer.get(dataBufferIn, 0, compressedLength);
-			} else {
-				FileChannel ch = in.getChannel();
-				ByteBuffer bb = ByteBuffer.wrap(dataBufferIn);
-				ch.read(bb, entry.getFileOffset());				
-			}
+			ch.read(ByteBuffer.wrap(dataBufferIn), entry.getFileOffset());				
 
-			if (ArchiveFile.USE_NON_NATIVE_ZIP) {
-				//JCraft version slower - though I wonder about android? seems real slow too
-				com.jcraft.jzlib.Inflater inflater = new com.jcraft.jzlib.Inflater();
-				inflater.setInput(dataBufferIn);
-				inflater.setOutput(dataBufferOut);
-				inflater.inflate(4);//Z_FINISH
-				inflater.end();
-			} else {
-				Inflater inflater = new Inflater();
-				inflater.setInput(dataBufferIn);
-				try {
-						int count = inflater.inflate(dataBufferOut);
-						if (count != entry.getFileLength())
-							System.err.println("Inflate count issue!  " + entry.getFileName());
-				} catch (DataFormatException e) {
-					e.printStackTrace();
-				}
-				inflater.end();
+			Inflater inflater = new Inflater();
+			inflater.setInput(dataBufferIn);
+			try {
+				int count = inflater.inflate(dataBufferOut);
+				if (count != entry.getFileLength())
+					System.err.println("Inflate count issue!  " + entry.getFileName());
+			} catch (DataFormatException e) {
+				e.printStackTrace();
 			}
+			inflater.end();
 
 			if (!allocateDirect) {
 				return ByteBuffer.wrap(dataBufferOut);
@@ -157,33 +106,10 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 				return bb;
 			}
 		} else {
-			if (ArchiveFile.USE_MINI_CHANNEL_MAPS && entry.getFileOffset() < Integer.MAX_VALUE) {
-				MappedByteBuffer mappedByteBuffer = null;
-				FileChannel.MapMode mm = FileChannel.MapMode.READ_ONLY;
-				FileChannel ch = in.getChannel();
-				if (entry.getFileOffset() > 0 && entry.getFileLength() > 0)
-					mappedByteBuffer = ch.map(mm, entry.getFileOffset(), entry.getFileLength());
-				else
-					throw new EOFException("Unexpected mapping values entry.getFileOffset() "
-											+ entry.getFileOffset() + " entry.getFileLength() "
-											+ entry.getFileLength() + " " + entry.getFileName());
-
-				// dear god, protect us
-				if (ArchiveFile.RETURN_MAPPED_BYTE_BUFFERS)
-					return mappedByteBuffer;
-				else {
-					ByteBuffer bb = allocateDirect ? ByteBuffer.allocateDirect(entry.getFileLength()) : ByteBuffer.allocate(entry.getFileLength());
-					bb.put(mappedByteBuffer);
-					bb.position(0);
-					return bb;					
-				}
-			} else {
-				FileChannel ch = in.getChannel();
-				ByteBuffer bb = allocateDirect ? ByteBuffer.allocateDirect(entry.getFileLength()) : ByteBuffer.allocate(entry.getFileLength());
-				ch.read(bb, entry.getFileOffset());
-				bb.position(0);
-				return bb;
-			}
+			ByteBuffer bb = allocateDirect ? ByteBuffer.allocateDirect(entry.getFileLength()) : ByteBuffer.allocate(entry.getFileLength());
+			ch.read(bb, entry.getFileOffset());
+			bb.position(0);
+			return bb;
 		}
 	
 	}

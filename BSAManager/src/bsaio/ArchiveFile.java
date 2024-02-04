@@ -12,11 +12,6 @@ import com.frostwire.util.LongSparseArray;
 import tools.io.FileChannelRAF;
 
 public abstract class ArchiveFile {
-	public static boolean	USE_FILE_MAPS				= false;
-	public static boolean	USE_MINI_CHANNEL_MAPS		= false;//true requires ArchiveFile.USE_FILE_MAPS = false;
-	public static boolean	USE_NON_NATIVE_ZIP			= false;// true=slower but no native calls
-	//CAREFUL!! this bad boy pushes disk access into the renderer thread, super fast load up jerky first looky looky
-	public static boolean	RETURN_MAPPED_BYTE_BUFFERS	= false;// seems waay faster for uncompressed things
 
 	public enum SIG {
 		TES3, BSA, BTDX
@@ -187,45 +182,40 @@ public abstract class ArchiveFile {
 	protected abstract void loadFolder(Folder folder) throws IOException;
 
 	public static ArchiveFile createArchiveFile(FileChannel file, String fileName) throws DBException, IOException {
-		//in = new RandomAccessFile(file, "r");
+
 		FileChannelRAF in = new FileChannelRAF(file, "r");
 		FileChannel ch = in.getChannel();
-		// lock just in case anyone else tries an early read
-//		synchronized (in) {
-			// test for TES3 BSA format flag\
-			byte[] tes3test = new byte[4];
-//			int count = in.read(tes3test);
-//			in.seek(0);
-			
-			int count = ch.read(ByteBuffer.wrap(tes3test), 0);			
-			if (count != 4) {
-				throw new EOFException("Archive tes3 test failed " + fileName);
-			}
 
-			if (getInteger(tes3test, 0) == 256) {
-				return new bsaio.tes3.ArchiveFileTes3(file, fileName);
-			} else {
-				//TES4+ format, reset to start
-//				in.seek(0);
-				 
-				//load header
-				byte[] header = new byte[36];
-				count = ch.read(ByteBuffer.wrap(header), 0);	
-//				count = in.read(header);
-//				in.seek(0);
-				if (count != 36) {
-					throw new EOFException("Archive header is incomplete " + fileName);
-				}
-				String id = new String(header, 0, 4);
-				if (id.equals("BSA\0")) {
-					return new bsaio.bsa.ArchiveFileBsa(file, fileName);
-				} else if (id.equals("BTDX")) {
-					return new bsaio.btdx.ArchiveFileBtdx(file, fileName);
-				} else {
-					throw new DBException("File is not a BSA archive " + fileName);
-				}
+		// test for TES3 BSA format flag\
+		byte[] tes3test = new byte[4];
+		
+		int count = ch.read(ByteBuffer.wrap(tes3test), 0);			
+		if (count != 4) {
+			throw new EOFException("Archive tes3 test failed " + fileName);
+		}
+
+		if (getInteger(tes3test, 0) == 256) {
+			return new bsaio.tes3.ArchiveFileTes3(file, fileName);
+		} else {
+			//TES4+ format, reset to start
+		 
+			//load header
+			byte[] header = new byte[36];
+			count = ch.read(ByteBuffer.wrap(header), 0);	
+
+			if (count != 36) {
+				throw new EOFException("Archive header is incomplete " + fileName);
 			}
-//		}
+			String id = new String(header, 0, 4);
+			if (id.equals("BSA\0")) {
+				return new bsaio.bsa.ArchiveFileBsa(file, fileName);
+			} else if (id.equals("BTDX")) {
+				return new bsaio.btdx.ArchiveFileBtdx(file, fileName);
+			} else {
+				throw new DBException("File is not a BSA archive " + fileName);
+			}
+		}
+
 	}
 
 	public abstract void load(boolean isForDisplay) throws DBException, IOException;
