@@ -231,6 +231,8 @@ public abstract class ArchiveFile {
 	public abstract boolean hasASTC();
 
 	public abstract boolean hasSounds();
+	
+	public abstract boolean hasMaterials();
 
 	protected static int getShort(byte buffer[], int offset) {
 		return buffer [offset + 0] & 0xff | (buffer [offset + 1] & 0xff) << 8;

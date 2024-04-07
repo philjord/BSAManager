@@ -43,6 +43,10 @@ public class ArchiveFileBsa extends ArchiveFile {
 	private boolean					hasASTCFiles	= false;
 
 	private boolean					isForDisplay	= false;
+	
+	private boolean					hasMaterials 	= false;
+	
+	//bgsm and bgem are material files
 
 	//TODO: I don't need the file name, it should never be given out, just used as a look up
 	private LongSparseArray<String>	filenameHashToFileNameMap;
@@ -331,6 +335,8 @@ public class ArchiveFileBsa extends ArchiveFile {
 			hasKTXFiles = hasKTXFiles || filename.endsWith("ktx");
 
 			hasASTCFiles = hasASTCFiles || filename.endsWith("astc");
+			
+			hasMaterials = hasMaterials || filename.endsWith("bgsm") || filename.endsWith("bgem");
 
 			bufferIndex++;
 		}
@@ -385,6 +391,11 @@ public class ArchiveFileBsa extends ArchiveFile {
 	@Override
 	public boolean hasSounds() {
 		return (fileFlags & 8) != 0 || (fileFlags & 0x10) != 0;
+	}
+	
+	@Override
+	public boolean hasMaterials() {
+		return hasMaterials;
 	}
 
 }

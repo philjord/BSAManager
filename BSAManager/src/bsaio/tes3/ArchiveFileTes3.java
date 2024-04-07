@@ -239,5 +239,10 @@ public class ArchiveFileTes3 extends ArchiveFile {
 	public boolean hasSounds() {
 		return true;
 	}
+	
+	@Override
+	public boolean hasMaterials() {
+		return false;
+	}
 
 }

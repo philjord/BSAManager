@@ -33,6 +33,8 @@ public class ArchiveFileBtdx extends ArchiveFile {
 	private boolean					hasKTXFiles		= false;
 
 	private boolean					hasASTCFiles	= false;
+	
+	private boolean					hasMaterials 	= false;
 
 	private LongSparseArray<String>	filenameHashToFileNameMap;
 
@@ -223,6 +225,8 @@ public class ArchiveFileBtdx extends ArchiveFile {
 			hasKTXFiles = hasKTXFiles || filename.endsWith("ktx");
 
 			hasASTCFiles = hasASTCFiles || filename.endsWith("astc");
+			
+			hasMaterials = hasMaterials || filename.endsWith("bgsm") || filename.endsWith("bgem");
 		}
 
 		// build up a trival folderhash from all the file names
@@ -371,6 +375,11 @@ public class ArchiveFileBtdx extends ArchiveFile {
 	@Override
 	public boolean hasASTC() {
 		return hasASTCFiles;
+	}
+	
+	@Override
+	public boolean hasMaterials() {
+		return hasMaterials;
 	}
 
 }
