@@ -261,6 +261,7 @@ public class ArchiveFileBtdx extends ArchiveFile {
 			}				
 			
 			int pathSep = fullFileName.lastIndexOf("\\");
+			pathSep = pathSep == -1 ? 0 : pathSep;
 			String folderName = fullFileName.substring(0, pathSep);
 			long folderHash = new HashCode(folderName, true).getHash();
 			Folder folder = folderHashToFolderMap.get(folderHash);
