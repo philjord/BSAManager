@@ -110,8 +110,20 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 				//ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('D', 'X', 'T', '1');
 				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height / 2; // 4bpp
 				break;
-
+			case DDS_HEADER.DXGI_FORMAT_BC1_UNORM_SRGB://FIXME: do I need to adjust for sRGB or is that a GPU thing?
+				ddsHeader.ddspf = ddsHeader.DDSPF_DXT1;
+				//ddsHeader.ddspf.dwFlags = ddsHeader.DDS_FOURCC;
+				//ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('D', 'X', 'T', '1');
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height / 2; // 4bpp
+				break;
 			case DDS_HEADER.DXGI_FORMAT_BC2_UNORM:
+				ddsHeader.ddspf = ddsHeader.DDSPF_DXT3;
+				//ddsHeader.ddspf.dwFlags = ddsHeader.DDS_FOURCC;
+				//ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('D', 'X', 'T', '3');
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				break;
+ 
+			case DDS_HEADER.DXGI_FORMAT_BC2_UNORM_SRGB:
 				ddsHeader.ddspf = ddsHeader.DDSPF_DXT3;
 				//ddsHeader.ddspf.dwFlags = ddsHeader.DDS_FOURCC;
 				//ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('D', 'X', 'T', '3');
@@ -124,8 +136,39 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 				//ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('D', 'X', 'T', '5');
 				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
 				break;
-
+			case DDS_HEADER.DXGI_FORMAT_BC3_UNORM_SRGB:
+				ddsHeader.ddspf = ddsHeader.DDSPF_DXT5;
+				//ddsHeader.ddspf.dwFlags = ddsHeader.DDS_FOURCC;
+				//ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('D', 'X', 'T', '5');
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				break;
 			case DDS_HEADER.DXGI_FORMAT_BC5_UNORM:
+				//System.out.println(" BC5 " + entry.getFileName());
+
+				ddsHeader.ddspf = ddsHeader.DDSPF_ATI2;
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				break;
+				
+				
+				/*
+				 * Apparently better for normals data
+				 * https://www.gamedev.net/forums/topic/578936-directx-10-unorm-vs-snorm/
+				 * 
+				 * snorm format is for signed values. 
+				 * The scale/biasing amount depends the number of bits per channel in the format. 
+				 * A float32 snorm would provide the best precision.
+				 *  You can store the value directly within the range [-1.0,1.0]. 
+				 *  Larger things should get clamped. So mostly that confirms what you already knew. 
+				 * 
+				 * https://learn.microsoft.com/en-us/windows/win32/api/dxgiformat/ne-dxgiformat-dxgi_format
+					DXGI_FORMAT_BC5_UNORM
+					Value: 83
+					Two-component block-compression format. For information about block-compression formats, see Texture Block Compression in Direct3D 11.
+					DXGI_FORMAT_BC5_SNORM
+					Value: 84
+					Two-component block-compression format. For information about block-compression formats, see Texture Block Compression in Direct3D 11.
+				 */
+			case DDS_HEADER.DXGI_FORMAT_BC5_SNORM://FIXME is this signed ints or something?
 				//System.out.println(" BC5 " + entry.getFileName());
 
 				ddsHeader.ddspf = ddsHeader.DDSPF_ATI2;
@@ -161,13 +204,32 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 				ddsHeader.ddspf = new DDS_PIXELFORMAT();
 				ddsHeader.ddspf.dwFlags = ddsHeader.DDS_RGBA;// in fact BGRA!
 				ddsHeader.ddspf.dwRGBBitCount = 32;
+				ddsHeader.ddspf.dwRBitMask = 0x000000FF;
+				ddsHeader.ddspf.dwGBitMask = 0x0000FF00;
+				ddsHeader.ddspf.dwBBitMask = 0x00FF0000;
+				ddsHeader.ddspf.dwABitMask = 0xFF000000;
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 4; // 32bpp
+				break;
+			case DDS_HEADER.DXGI_FORMAT_R8G8B8A8_UNORM:
+					ddsHeader.ddspf = new DDS_PIXELFORMAT();
+					ddsHeader.ddspf.dwFlags = ddsHeader.DDS_RGBA; 
+					ddsHeader.ddspf.dwRGBBitCount = 32;
+					ddsHeader.ddspf.dwRBitMask = 0x00FF0000;
+					ddsHeader.ddspf.dwGBitMask = 0x0000FF00;
+					ddsHeader.ddspf.dwBBitMask = 0x000000FF;
+					ddsHeader.ddspf.dwABitMask = 0xFF000000;
+					ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 4; // 32bpp
+					break;
+			case DDS_HEADER.DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+				ddsHeader.ddspf = new DDS_PIXELFORMAT();
+				ddsHeader.ddspf.dwFlags = ddsHeader.DDS_RGBA;
+				ddsHeader.ddspf.dwRGBBitCount = 32;
 				ddsHeader.ddspf.dwRBitMask = 0x00FF0000;
 				ddsHeader.ddspf.dwGBitMask = 0x0000FF00;
 				ddsHeader.ddspf.dwBBitMask = 0x000000FF;
 				ddsHeader.ddspf.dwABitMask = 0xFF000000;
 				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 4; // 32bpp
 				break;
-
 			case DDS_HEADER.DXGI_FORMAT_R8_UNORM:
 				ddsHeader.ddspf = new DDS_PIXELFORMAT();
 				ddsHeader.ddspf.dwFlags = ddsHeader.DDS_RGB;
@@ -175,6 +237,8 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 				ddsHeader.ddspf.dwRBitMask = 0xFF;
 				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
 				break;
+				
+
 
 			default:
 				System.err.println("unhandled format " + tex.format + " " + tex);
