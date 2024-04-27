@@ -9,9 +9,14 @@ import java.util.zip.Inflater;
 
 import org.jogamp.java3d.compressedtexture.FastByteArrayInputStream;
 
+import com.github.pbbl.heap.ByteBufferPool;
+
 import tools.io.FileChannelRAF;
 
 public class ArchiveInputStream extends FastByteArrayInputStream {
+	
+	private static ByteBufferPool pool = new ByteBufferPool();
+	
 	public ArchiveInputStream(FileChannelRAF in, ArchiveEntry entry) throws IOException {
 		super(new byte[0]);//reset below once data is available
 		FileChannel ch = in.getChannel();
@@ -79,14 +84,18 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 		boolean isCompressed = entry.isCompressed();
 		if (isCompressed && entry.getFileLength() > 0) {
 			dataBufferOut = new byte[entry.getFileLength()];
+			
 			// entry size for buffer
 			int compressedLength = entry.getCompressedLength();
-			byte[] dataBufferIn = new byte[compressedLength];
+			ByteBuffer dataBufferInBB = pool.take(compressedLength);
+			//byte[] dataBufferIn = new byte[compressedLength];
 
-			ch.read(ByteBuffer.wrap(dataBufferIn), entry.getFileOffset());				
+			//ch.read(ByteBuffer.wrap(dataBufferIn), entry.getFileOffset());
+			ch.read(dataBufferInBB, entry.getFileOffset());					
 
 			Inflater inflater = new Inflater();
-			inflater.setInput(dataBufferIn);
+			//inflater.setInput(dataBufferIn);
+			inflater.setInput(dataBufferInBB.array());
 			try {
 				int count = inflater.inflate(dataBufferOut);
 				if (count != entry.getFileLength())
@@ -95,18 +104,21 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 				e.printStackTrace();
 			}
 			inflater.end();
-
-			if (!allocateDirect) {
-				return ByteBuffer.wrap(dataBufferOut);
-			} else {
+			pool.give(dataBufferInBB);
+ 
+			// someone is calling no direct, but I think I can't see the advantage, if it ever touches the GPU API it must be direct
+			//if (!allocateDirect) {
+			//	return ByteBuffer.wrap(dataBufferOut);
+			//} else {
 				ByteBuffer bb = ByteBuffer.allocateDirect(dataBufferOut.length);
 				bb.order(ByteOrder.nativeOrder());
 				bb.put(dataBufferOut);
 				bb.position(0);
 				return bb;
-			}
+			//}
 		} else {
-			ByteBuffer bb = allocateDirect ? ByteBuffer.allocateDirect(entry.getFileLength()) : ByteBuffer.allocate(entry.getFileLength());
+			//ByteBuffer bb = allocateDirect ? ByteBuffer.allocateDirect(entry.getFileLength()) : ByteBuffer.allocate(entry.getFileLength());
+			ByteBuffer bb = ByteBuffer.allocateDirect(entry.getFileLength());
 			ch.read(bb, entry.getFileOffset());
 			bb.position(0);
 			return bb;
