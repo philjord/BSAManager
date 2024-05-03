@@ -34,7 +34,7 @@ public abstract class ArchiveFile {
 	protected LongSparseArray<Folder>	folderHashToFolderMap;
 
 	public class Folder {
-		public String							folderName		= "";	// need for get folder files
+		//public String							folderName		= "";	// need for get folder files
 
 		public int								folderFileCount	= 0;
 
@@ -50,9 +50,9 @@ public abstract class ArchiveFile {
 			this.isForDisplay = isForDisplay;
 		}
 
-		public String getFolderName() {
-			return folderName;
-		}
+		//public String getFolderName() {
+		//	return folderName;
+		//}
 
 		public int getFolderFileCount() {
 			return folderFileCount;
@@ -70,10 +70,10 @@ public abstract class ArchiveFile {
 			return fileToHashMap;
 		}
 
-		@Override
-		public String toString() {
-			return "Folder:" + folderName;
-		}
+	//	@Override
+	//	public String toString() {
+	//		return "Folder:" + folderName;
+	//	}
 	}
 
 	public ArchiveFile(SIG sig, FileChannel file, String fileName) {

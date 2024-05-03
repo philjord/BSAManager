@@ -4,11 +4,11 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 	//TODO: this should be in the Displayable version
 	// only needed in order to   getFilesInFolder(String folderName)  from MeshSource interface
 	// however I can't easily reload Ba2 and tes3 archives by folder so it's here for now
-	protected String	fileName;
+//	protected String	fileName;
 
 	private HashCode	folderHashCode;
 
-	private HashCode	fileHashCode;
+	protected HashCode	fileHashCode;
 
 	private long		fileOffset;
 
@@ -27,9 +27,14 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 			throw new IllegalArgumentException("File name is longer than 254 characters " + fileName);
 		}
 
-		this.fileName = fileName;
 		folderHashCode = new HashCode(folderName, true);
 		fileHashCode = new HashCode(fileName, false);
+	}
+	
+	public ArchiveEntry(ArchiveFile archiveFile, HashCode folderHashCode, HashCode fileHashCode) {
+		//this.fileName = fileName;
+		this.folderHashCode = folderHashCode;
+		this.fileHashCode = fileHashCode;
 	}
 
 	public void setFolderName(String folderName) {
@@ -44,18 +49,7 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 		return folderHashCode;
 	}
 
-	public String getFileName() {
-		return fileName;
-	}
-
-	public void setFileName(String fileName) {
-		if (fileName.length() > 254) {
-			throw new IllegalArgumentException("File name is longer than 254 characters " + fileName);
-		}
-		this.fileName = fileName;
-		fileHashCode = new HashCode(fileName, false);
-
-	}
+ 
 
 	public HashCode getFileHashCode() {
 		return fileHashCode;

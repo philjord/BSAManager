@@ -268,7 +268,6 @@ public class ArchiveFileBtdx extends ArchiveFile {
 
 			if (folder == null) {
 				folder = new Folder(0, -1, isForDisplay);
-				folder.folderName = folderName;
 				folder.fileToHashMap = new LongSparseArray<ArchiveEntry>();
 				folderHashToFolderMap.put(folderHash, folder);
 			}
@@ -280,9 +279,9 @@ public class ArchiveFileBtdx extends ArchiveFile {
 			if (bsaFileType == BsaFileType.GNRL) {
 				ArchiveEntry entry;
 				if (isForDisplay)
-					entry = new DisplayableArchiveEntry(this, folder.folderName, fileName);
+					entry = new DisplayableArchiveEntry(this, folderName, fileName);
 				else
-					entry = new ArchiveEntry(this, folder.folderName, fileName);
+					entry = new ArchiveEntry(this, folderName, fileName);
 
 				// int nameHash = getInteger(buffer, i*36+0);// 00 - name hash?
 				// String ext = new String(buffer, 4,i*36+ 4); // 04 - extension
@@ -307,9 +306,9 @@ public class ArchiveFileBtdx extends ArchiveFile {
 			} else {
 				ArchiveEntryDX10 entry;
 				if (isForDisplay)
-					entry = new DisplayableArchiveEntryDX10(this, folder.folderName, fileName);
+					entry = new DisplayableArchiveEntryDX10(this, folderName, fileName);
 				else
-					entry = new ArchiveEntryDX10(this, folder.folderName, fileName);
+					entry = new ArchiveEntryDX10(this, folderName, fileName);
 
 				count = ch.read(ByteBuffer.wrap(buffer), pos);
 				pos += buffer.length;

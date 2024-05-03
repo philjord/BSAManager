@@ -80,6 +80,11 @@ public class HashCode implements Comparable<HashCode>
 				hash |= 0x80000000L;
 		}
 	}
+	
+	public HashCode(long hash)
+	{
+		this.hash = hash;
+	}
 
 	public long getHash()
 	{

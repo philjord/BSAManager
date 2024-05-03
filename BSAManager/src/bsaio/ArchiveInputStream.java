@@ -41,10 +41,10 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 			try {
 				int count = inflater.inflate(dataBufferOut);
 				if (count != entry.getFileLength())
-					System.err.println("Inflate count issue! " + entry.getFileName());
+					System.err.println("Inflate count issue! " + entry.getFileHashCode());
 
 			} catch (DataFormatException e) {
-				System.out.println("Entry infaltion issue " + entry.getFileName());
+				System.out.println("Entry infaltion issue " + entry.getFileHashCode());
 				e.printStackTrace();
 			}
 			inflater.end();
@@ -74,7 +74,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 		
 		// biggest file seen nif file at about 12 meg, all great sizes are a bad entry
 		if (entry.getFileLength() < 0 || entry.getFileLength() > 16000000) {			
-			new Throwable("Bad ArchiveEntry info:" + entry.getFileName()).printStackTrace();
+			new Throwable("Bad ArchiveEntry info:" + entry.getFileHashCode()).printStackTrace();
 			return null;
 		}
 
@@ -99,7 +99,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 			try {
 				int count = inflater.inflate(dataBufferOut);
 				if (count != entry.getFileLength())
-					System.err.println("Inflate count issue!  " + entry.getFileName());
+					System.err.println("Inflate count issue!  " + entry.getFileHashCode());
 			} catch (DataFormatException e) {
 				e.printStackTrace();
 			}

@@ -13,4 +13,6 @@ public interface Displayable
 	
 	ArchiveFile getArchiveFile();
 
+	void setFileName(String fileName);
+
 }

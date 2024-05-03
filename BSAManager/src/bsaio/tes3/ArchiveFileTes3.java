@@ -187,7 +187,6 @@ public class ArchiveFileTes3 extends ArchiveFile {
 
 			if (folder == null) {
 				folder = new Folder(0, -1, isForDisplay);
-				folder.folderName = folderName;
 				folder.fileToHashMap = new LongSparseArray<ArchiveEntry>();
 				folderHashToFolderMap.put(folderHash, folder);
 			}
@@ -197,9 +196,9 @@ public class ArchiveFileTes3 extends ArchiveFile {
 
 			ArchiveEntry entry;
 			if (isForDisplay)
-				entry = new DisplayableArchiveEntry(this, folder.folderName, fileName);
+				entry = new DisplayableArchiveEntry(this, folderName, fileName);
 			else
-				entry = new ArchiveEntry(this, folder.folderName, fileName);
+				entry = new ArchiveEntry(this, folderName, fileName);
 
 			entry.setFileOffset(fileDataStartOffset + fileOffsets [i]);
 			entry.setFileLength(fileSizes [i]);

@@ -49,6 +49,7 @@ public class ArchiveFileBsa extends ArchiveFile {
 	//bgsm and bgem are material files
 
 	//TODO: I don't need the file name, it should never be given out, just used as a look up
+	// isForDisplay==true only!
 	private LongSparseArray<String>	filenameHashToFileNameMap;
 
 	public ArchiveFileBsa(FileChannel file, String fileName) {
@@ -123,14 +124,20 @@ public class ArchiveFileBsa extends ArchiveFile {
 
 				String fileName = fullFileName.substring(pathSep + 1);
 				long fileHashCode = new HashCode(fileName, false).getHash();
-				String bsaFileName = filenameHashToFileNameMap.get(fileHashCode);
-				if (bsaFileName != null) {
-					if (bsaFileName.equals(fileName)) {
-						return folder.fileToHashMap.get(fileHashCode);
-					} else {
-						System.out.println("BSA File name mismatch: " + bsaFileName + " " + fileName);
+				if (isForDisplay == true) {
+					String bsaFileName = filenameHashToFileNameMap.get(fileHashCode);
+					if (bsaFileName != null) {
+						if (bsaFileName.equals(fileName)) {
+							return folder.fileToHashMap.get(fileHashCode);
+						} else {
+							System.out.println("BSA File name mismatch: " + bsaFileName + " " + fileName);
+						}
 					}
+				} else {
+					// no ability to check just grab it and go
+					return folder.fileToHashMap.get(fileHashCode);
 				}
+					
 			}
 		} catch (IOException e) {
 			System.out.println(
@@ -161,7 +168,7 @@ public class ArchiveFileBsa extends ArchiveFile {
 		pos += length;
 		if (count != length)
 			throw new EOFException("Folder name is incomplete");
-		folder.folderName = new String(name, 0, length - 1);// last null isn't sexy
+		String folderName = new String(name, 0, length - 1);// last null isn't sexy
 
 		byte[] buffer = new byte[16];		 
 
@@ -178,16 +185,19 @@ public class ArchiveFileBsa extends ArchiveFile {
 			int dataLength = getInteger(buffer, 8);
 			long dataOffset = getInteger(buffer, 12) & 0xffffffffL;
 
-			String fileName = filenameHashToFileNameMap.get(fileHash);
-
-			if (fileName == null)
-				System.out.println("entry of null with hash of " + fileHash);
+			
 
 			ArchiveEntry entry;
-			if (isForDisplay)
-				entry = new DisplayableArchiveEntry(this, folder.folderName, fileName);
-			else
-				entry = new ArchiveEntry(this, folder.folderName, fileName);
+			if (isForDisplay) {
+				String fileName = filenameHashToFileNameMap.get(fileHash);
+
+				if (fileName == null)
+					System.out.println("entry of null with hash of " + fileHash);
+			
+				entry = new DisplayableArchiveEntry(this, folderName, fileName);
+			} else {
+				entry = new ArchiveEntry(this, new HashCode(folderName, true), new HashCode(fileHash));
+			}
 
 			if (version == 104) {
 				//FO3 - Fallout 3
@@ -311,7 +321,8 @@ public class ArchiveFileBsa extends ArchiveFile {
 
 		String[] fileNames = new String[fileCount];
 
-		filenameHashToFileNameMap = new LongSparseArray<String>(fileCount);
+		if(isForDisplay)
+			filenameHashToFileNameMap = new LongSparseArray<String>(fileCount);
 
 		int bufferIndex = 0;
 		for (int nameIndex = 0; nameIndex < fileCount; nameIndex++) {
@@ -327,8 +338,10 @@ public class ArchiveFileBsa extends ArchiveFile {
 			String filename = new String(nameBuffer, startIndex, bufferIndex - startIndex);
 
 			fileNames [nameIndex] = filename;
+			
 			//these must be loaded and hashed now as the folder only has the hash values in it
-			filenameHashToFileNameMap.put(new HashCode(filename, false).getHash(), filename);
+			if(isForDisplay)			
+				filenameHashToFileNameMap.put(new HashCode(filename, false).getHash(), filename);
 			
 			hasDDSFiles = hasDDSFiles || filename.endsWith("dds");
 
