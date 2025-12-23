@@ -3,6 +3,6 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/Tools"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/java3d-utils-and"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/3DTools"/>
 	<classpathentry kind="output" path="output"/>
 </classpath>
