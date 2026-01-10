@@ -47,7 +47,7 @@ public class DisplayableArchiveEntryDX10 extends ArchiveEntryDX10 implements Dis
 		if (fileName.length() > 254) {
 			throw new IllegalArgumentException("File name is longer than 254 characters " + fileName);
 		}
-		fileHashCode = new HashCode(fileName, false);
+		fileHashCode = HashCode.hashCode(fileName, false);
 		this.fileName = fileName;
 		entryName = (new StringBuilder()).append(folderName).append("\\").append(fileName).toString();
 

@@ -4,20 +4,26 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 	//TODO: this should be in the Displayable version
 	// only needed in order to   getFilesInFolder(String folderName)  from MeshSource interface
 	// however I can't easily reload Ba2 and tes3 archives by folder so it's here for now
-//	protected String	fileName;
+	//	protected String	fileName;
 
-	private HashCode	folderHashCode;
+	private long	folderHashCode;
 
-	protected HashCode	fileHashCode;
+	protected long	fileHashCode;
 
-	private long		fileOffset;
+	private long	fileOffset;
 
-	private int			fileLength;
+	private int		fileLength;
 
-	private int			compressedLength;
+	private int		compressedLength;
 
-	private boolean		isCompressed;
+	private boolean	isCompressed;
 
+	/**
+	 * This is the expensive way to load up entries
+	 * @param archiveFile
+	 * @param folderName
+	 * @param fileName
+	 */
 	public ArchiveEntry(ArchiveFile archiveFile, String folderName, String fileName) {
 		if (folderName == null || fileName == null) {
 			throw new IllegalArgumentException("Folder name or file name is null " + folderName + " : " + fileName);
@@ -27,12 +33,11 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 			throw new IllegalArgumentException("File name is longer than 254 characters " + fileName);
 		}
 
-		folderHashCode = new HashCode(folderName, true);
-		fileHashCode = new HashCode(fileName, false);
+		folderHashCode = HashCode.hashCode(folderName, true);
+		fileHashCode = HashCode.hashCode(fileName, false);
 	}
-	
-	public ArchiveEntry(ArchiveFile archiveFile, HashCode folderHashCode, HashCode fileHashCode) {
-		//this.fileName = fileName;
+
+	public ArchiveEntry(ArchiveFile archiveFile, long folderHashCode, long fileHashCode) {
 		this.folderHashCode = folderHashCode;
 		this.fileHashCode = fileHashCode;
 	}
@@ -42,16 +47,14 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 			throw new IllegalArgumentException("Folder name is longer than 254 characters " + folderName);
 		}
 
-		folderHashCode = new HashCode(folderName, true);
+		folderHashCode = HashCode.hashCode(folderName, true);
 	}
 
-	public HashCode getFolderHashCode() {
+	public long getFolderHashCode() {
 		return folderHashCode;
 	}
 
- 
-
-	public HashCode getFileHashCode() {
+	public long getFileHashCode() {
 		return fileHashCode;
 	}
 
@@ -89,21 +92,27 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 
 	@Override
 	public boolean equals(Object obj) {
-		boolean equal = false;
 		if (obj != null && (obj instanceof ArchiveEntry)) {
 			ArchiveEntry compare = (ArchiveEntry)obj;
-			if (folderHashCode.equals(compare.getFolderHashCode()) && fileHashCode.equals(compare.getFileHashCode()))
-				equal = true;
+			if (folderHashCode == compare.getFolderHashCode() && fileHashCode == compare.getFileHashCode())
+				return true;
 		}
-		return equal;
+		return false;
 	}
 
 	@Override
 	public int compareTo(ArchiveEntry obj) {
-		int diff = folderHashCode.compareTo(obj.getFolderHashCode());
-		if (diff == 0)
-			diff = fileHashCode.compareTo(obj.getFileHashCode());
-		return diff;
+		if (folderHashCode < obj.folderHashCode)
+			return -1;
+		else if (folderHashCode > obj.folderHashCode)
+			return 1;
+		else if (fileHashCode < obj.fileHashCode)
+			return -1;
+		else if (fileHashCode > obj.fileHashCode)
+			return 1;
+		else
+			return 0;
+
 	}
 
 	@Override

@@ -19,8 +19,8 @@ public abstract class ArchiveFile {
 
 	protected SIG						sig;
 
-	protected int						version;// 104 is FO3 and TES5, 103 is TES4
-	public static final int				PARTIAL_FILE		= 14233412;
+	protected int						version;					// 104 is FO3 and TES5, 103 is TES4
+	public static final int				PARTIAL_FILE	= 14233412;
 
 	protected FileChannel				file;
 	protected String					fileName;
@@ -31,28 +31,25 @@ public abstract class ArchiveFile {
 
 	protected int						fileCount;
 
+	// each folder has it's file pointers and hashes so this is teh data model main dictionary
 	protected LongSparseArray<Folder>	folderHashToFolderMap;
 
-	public class Folder {
-		//public String							folderName		= "";	// need for get folder files
+	protected boolean					isForDisplay	= false;
 
+	/**
+	 * folders have the data for file in the hashmap
+	 */
+	public static class Folder {
 		public int								folderFileCount	= 0;
 
 		public long								offset			= -1;
 
-		private boolean							isForDisplay	= false;
-
 		public LongSparseArray<ArchiveEntry>	fileToHashMap;
 
-		public Folder(int folderFileCount, long offset, boolean isForDisplay) {
+		public Folder(int folderFileCount, long offset) {
 			this.folderFileCount = folderFileCount;
 			this.offset = offset;
-			this.isForDisplay = isForDisplay;
 		}
-
-		//public String getFolderName() {
-		//	return folderName;
-		//}
 
 		public int getFolderFileCount() {
 			return folderFileCount;
@@ -62,24 +59,17 @@ public abstract class ArchiveFile {
 			return offset;
 		}
 
-		public boolean isForDisplay() {
-			return isForDisplay;
-		}
-
 		public LongSparseArray<ArchiveEntry> getFileToHashMap() {
 			return fileToHashMap;
 		}
 
-	//	@Override
-	//	public String toString() {
-	//		return "Folder:" + folderName;
-	//	}
 	}
 
-	public ArchiveFile(SIG sig, FileChannel file, String fileName) {
+	public ArchiveFile(boolean isForDisplay, SIG sig, FileChannel file, String fileName) {
 		this.sig = sig;
 		this.file = file;
 		this.fileName = fileName;
+		this.isForDisplay = isForDisplay;
 	}
 
 	public String getName() {
@@ -144,73 +134,56 @@ public abstract class ArchiveFile {
 		}
 	}
 
-	//Notice isForDisplay unused here due to trouble with other sorts of ArchiveFile
+	/**
+	 * Notice isForDisplay unused here due to trouble with other sorts of ArchiveFile Expensive don't call this casually
+	 * @param folderName
+	 * @param isForDisplay
+	 * @return
+	 */
 	public Folder getFolder(String folderName, boolean isForDisplay) {
-
-		StringBuilder buildName = new StringBuilder(folderName.toLowerCase());
-		int sep;
-		while ((sep = buildName.indexOf("/")) >= 0) {
-			buildName.replace(sep, sep + 1, "\\");
-		}
-		folderName = buildName.toString();
-		long folderHash = new HashCode(folderName, true).getHash();
-
-		Folder folder = folderHashToFolderMap.get(folderHash);
-
-		// fine as likely one of many bsas searched
-		/*if (folder == null)
-		{
-			System.out.println("requested folder does not exist " + folderName + " in " + file);
-		}*/
-
-		try {
-			if (folder != null && folder.fileToHashMap == null) {
-				loadFolder(folder);
-			}
-
-			return folder;
-		} catch (IOException e) {
-			System.out.println(
-					"ArchiveFile Exception for folderName: " + folderName + " " + e + " " + e.getStackTrace() [0]);
-		}
-
-		return null;
+		throw new UnsupportedOperationException(
+				"ArchiveFile.getEntries() can only be called aginst displayable version");
 	}
 
 	public abstract ArchiveEntry getEntry(String fullFileName);
 
+	/**
+	 * Expensive don't call this casually
+	 * @param folder
+	 * @throws IOException
+	 */
 	protected abstract void loadFolder(Folder folder) throws IOException;
 
-	public static ArchiveFile createArchiveFile(FileChannel file, String fileName) throws DBException, IOException {
+	public static ArchiveFile createArchiveFile(boolean isForDisplay, FileChannel file, String fileName) throws DBException, IOException {
 
 		FileChannelRAF in = new FileChannelRAF(file, "r");
 		FileChannel ch = in.getChannel();
 
 		// test for TES3 BSA format flag\
 		byte[] tes3test = new byte[4];
-		
-		int count = ch.read(ByteBuffer.wrap(tes3test), 0);			
+
+		int count = ch.read(ByteBuffer.wrap(tes3test), 0);
 		if (count != 4) {
 			throw new EOFException("Archive tes3 test failed " + fileName);
 		}
 
 		if (getInteger(tes3test, 0) == 256) {
-			return new bsaio.tes3.ArchiveFileTes3(file, fileName);
+			return new bsaio.tes3.ArchiveFileTes3(isForDisplay, file, fileName);
 		} else {
 			//TES4+ format, reset to start
-		 
+
 			//load header
 			byte[] header = new byte[36];
-			count = ch.read(ByteBuffer.wrap(header), 0);	
+			count = ch.read(ByteBuffer.wrap(header), 0);
 
 			if (count != 36) {
 				throw new EOFException("Archive header is incomplete " + fileName);
 			}
 			String id = new String(header, 0, 4);
 			if (id.equals("BSA\0")) {
-				return new bsaio.bsa.ArchiveFileBsa(file, fileName);
+				return new bsaio.bsa.ArchiveFileBsa(isForDisplay, file, fileName);
 			} else if (id.equals("BTDX")) {
-				return new bsaio.btdx.ArchiveFileBtdx(file, fileName);
+				return new bsaio.btdx.ArchiveFileBtdx(isForDisplay, file, fileName);
 			} else {
 				throw new DBException("File is not a BSA archive " + fileName);
 			}
@@ -218,12 +191,12 @@ public abstract class ArchiveFile {
 
 	}
 
-	public abstract void load(boolean isForDisplay) throws DBException, IOException;
+	public abstract void load() throws DBException, IOException;
 
 	public abstract boolean hasNifOrKf();
 
 	public abstract boolean hasTextureFiles();
-	
+
 	public abstract boolean hasDDS();
 
 	public abstract boolean hasKTX();
@@ -231,24 +204,32 @@ public abstract class ArchiveFile {
 	public abstract boolean hasASTC();
 
 	public abstract boolean hasSounds();
-	
+
 	public abstract boolean hasMaterials();
 
 	protected static int getShort(byte buffer[], int offset) {
-		return buffer [offset + 0] & 0xff | (buffer [offset + 1] & 0xff) << 8;
+		return buffer[offset + 0] & 0xff | (buffer[offset + 1] & 0xff) << 8;
+	}
+	
+	protected static int getUShort(byte buffer[], int offset) {
+		return (buffer[offset + 0] & 0xff | (buffer[offset + 1] & 0xff) << 8) & 0xffffffff;
 	}
 
 	protected static int getInteger(byte buffer[], int offset) {
-		return buffer [offset + 0]	& 0xff	| (buffer [offset + 1] & 0xff) << 8 | (buffer [offset + 2] & 0xff) << 16
-				| (buffer [offset + 3] & 0xff) << 24;
+		return buffer[offset + 0]	& 0xff	| (buffer[offset + 1] & 0xff) << 8 | (buffer[offset + 2] & 0xff) << 16
+				| (buffer[offset + 3] & 0xff) << 24;
 	}
-
-	protected static long getLong(byte buffer[], int offset) {
-		return    (buffer [offset + 0] & 255L) << 0  | (buffer [offset + 1] & 255L) << 8 
-				| (buffer [offset + 2] & 255L) << 16 | (buffer [offset + 3] & 255L) << 24
-				| (buffer [offset + 4] & 255L) << 32 | (buffer [offset + 5] & 255L) << 40
-				| (buffer [offset + 6] & 255L) << 48 | (buffer [offset + 7] & 255L) << 56;
-	}
-
 	
+	protected static long getUInteger(byte buffer[], int offset) {
+		return (buffer[offset + 0]	& 0xff	| (buffer[offset + 1] & 0xff) << 8 | (buffer[offset + 2] & 0xff) << 16
+				| (buffer[offset + 3] & 0xff) << 24) & 0xffffffffL;
+	}
+	
+	protected static long getLong(byte buffer[], int offset) {
+		return (buffer[offset + 0] & 255L) << 0 | (buffer[offset + 1] & 255L) << 8 | (buffer[offset + 2] & 255L) << 16
+				| (buffer[offset + 3] & 255L) << 24 | (buffer[offset + 4] & 255L) << 32
+				| (buffer[offset + 5] & 255L) << 40 | (buffer[offset + 6] & 255L) << 48
+				| (buffer[offset + 7] & 255L) << 56;
+	}
+
 }

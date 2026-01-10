@@ -1,6 +1,5 @@
 package bsaio.btdx;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -18,28 +17,101 @@ import bsaio.HashCode;
 import bsaio.btdx.ArchiveEntryDX10.DX10Chunk;
 import bsaio.displayables.DisplayableArchiveEntry;
 import bsaio.displayables.DisplayableArchiveEntryDX10;
+import bsaio.displayables.DisplayableArchiveEntryGNFDX10;
 import tools.io.FileChannelRAF;
 
+/**
+
+ * 
+ * good code here https://github.com/AlexxEG/BSA_Browser/
+ * https://github.com/AlexxEG/BSA_Browser/tree/master/Sharp.BSA.BA2/BA2Util
+ * 
+ * 
+ * https://github.com/Ryan-rsm-McKenzie/bsa/tree/master/src/bsa
+ * 
+ * https://github.com/miere43/ba2tools
+ * 
+ * this has a good bsa parsing code in it
+ * https://github.com/fo76utils/fo76utils/blob/main/libfo76utils/src/ba2file.cpp#L16
+ * 
+ * version 3 can be zip or https://github.com/yawkat/lz4-java
+ */
 public class ArchiveFileBtdx extends ArchiveFile {
 
 	public enum BsaFileType {
-		GNRL, DX10
+		GNRL, // general files
+		DX10, // DX10 file with 24 bytes of header adn many 24 byte chunks
+		GNMF // also a DX10 format with 72 bytes of header and 24 byte chunks
 	};
 
-	private BsaFileType				bsaFileType;				// in BTDX id
-	
-	private boolean					hasDDSFiles		= false;
+	private BsaFileType	bsaFileType;				// in BTDX id
 
-	private boolean					hasKTXFiles		= false;
+	private boolean		hasDDSFiles			= false;
 
-	private boolean					hasASTCFiles	= false;
-	
-	private boolean					hasMaterials 	= false;
+	private boolean		hasKTXFiles			= false;
 
-	private LongSparseArray<String>	filenameHashToFileNameMap;
+	private boolean		hasASTCFiles		= false;
 
-	public ArchiveFileBtdx(FileChannel file, String fileName) {
-		super(SIG.BTDX, file, fileName);
+	private boolean		hasMaterials		= false;
+
+	private boolean		hasUndecipheredHash	= false;//this is a temp work around
+
+	private int			Unknown1;
+
+	private int			Unknown2;
+
+	private int			Unknown3;
+
+	public enum CompressionFormat {
+		ZIP, LZ4
+	};
+
+	private CompressionFormat compressionType;
+
+	public ArchiveFileBtdx(boolean isForDisplay, FileChannel file, String fileName) {
+		super(isForDisplay, SIG.BTDX, file, fileName);
+
+		//TODO: this guy results in 
+		/*if (fileName.contains("hittechextalod01")) {
+		
+		Notice tha tthe BSA Material source is cutting off a bunch of folder text
+		C:\Projects\Falout4\... before the word materials, so that might be part of the issue
+		though the has values in the archive are really short like oddly short
+		perhaps this tiny materials file has a flag saying always fully load into memory?
+			System.out.println("folderName " + folderName + " filename " + fileName);
+		
+			//getMaterial Material materials\LOD\HitTechExtALOD01.BGSM not found in archive bsas checked: Fallout4 - Materials.ba2,  checked: Fallout4 - Startup.ba2, 
+		
+			//TODO: hash get modifed by teh EXT, so old bgsm here needs a new value?
+			// it is only the bgsm ones!
+			
+			
+			System.out.println("folderNam2 " + "materials\\LOD".toLowerCase() + " filenam2 " + "HitTechExtALOD01.BGSM".toLowerCase());
+			
+			long folderHashCode = new HashCode("materials\\LOD".toLowerCase(), true).getHash();
+			long fileHashCode = new HashCode("HitTechExtALOD01.BGSM".toLowerCase(), false).getHash();
+		
+			System.out.println("folderHashCode " + folderHashCode + " fileHashCode " + fileHashCode);
+			System.out.println("dirHash " + dirHash + " nameHash " + nameHash);
+		
+			if (nameHash == fileHashCode) {
+				System.out.println("got it");
+			}
+			
+			//Console output of the above is:
+			//folderName materials\lod filename hittechextalod01.bgsm
+			//folderNam2 materials\lod filenam2 hittechextalod01.bgsm
+			//folderHashCode 4414663359149731684 fileHashCode -2037136053700120527
+			//dirHash 382035673 nameHash 6851464
+		}*/
+		if (fileName.equals("Fallout4 - Materials.ba2")) {
+			hasUndecipheredHash = true;
+		}
+		
+		// opps possibly my has codes are way off
+		if (fileName.contains("SeventySix")) {
+			hasUndecipheredHash = true;
+		}
 	}
 
 	/**
@@ -70,7 +142,7 @@ public class ArchiveFileBtdx extends ArchiveFile {
 			}
 
 		} catch (IOException e) {
-			System.out.println("ArchiveFile Exception for filename:  " + e + " " + e.getStackTrace() [0]);
+			System.out.println("ArchiveFile Exception for filename:  " + e + " " + e.getStackTrace()[0]);
 		}
 
 		return ret;
@@ -92,7 +164,7 @@ public class ArchiveFileBtdx extends ArchiveFile {
 
 		int pathSep = fullFileName.lastIndexOf("\\");
 		String folderName = fullFileName.substring(0, pathSep);
-		long folderHash = new HashCode(folderName, true).getHash();
+		long folderHash = HashCode.hashCode(folderName, true);
 		Folder folder = folderHashToFolderMap.get(folderHash);
 
 		if (folder != null) {
@@ -103,16 +175,8 @@ public class ArchiveFileBtdx extends ArchiveFile {
 			}
 
 			String fileName = fullFileName.substring(pathSep + 1);
-			long fileHashCode = new HashCode(fileName, false).getHash();
-			String bsaFileName = filenameHashToFileNameMap.get(fileHashCode);
-
-			if (bsaFileName != null) {
-				if (bsaFileName.equals(fileName)) {
-					return folder.fileToHashMap.get(fileHashCode);
-				} else {
-					System.out.println("BSA File name mismatch: " + bsaFileName + " " + fileName);
-				}
-			}
+			long fileHashCode = HashCode.hashCode(fileName, false);
+			return folder.fileToHashMap.get(fileHashCode);
 		}
 
 		return null;
@@ -131,6 +195,9 @@ public class ArchiveFileBtdx extends ArchiveFile {
 
 		if (bsaFileType == BsaFileType.DX10) {
 			return new ArchiveInputStreamDX10(in, entry);
+		} else if (bsaFileType == BsaFileType.GNMF) {
+			throw new UnsupportedOperationException(
+					"GNMF getInputStream not yet quite finished mip count is a problem");
 		} else {
 			return new ArchiveInputStream(in, entry);
 		}
@@ -144,6 +211,8 @@ public class ArchiveFileBtdx extends ArchiveFile {
 
 		if (bsaFileType == BsaFileType.DX10) {
 			return ArchiveInputStreamDX10.getByteBuffer(in, entry, false);
+		} else if (bsaFileType == BsaFileType.GNMF) {
+			throw new UnsupportedOperationException("GNMF getByteBuffer not yet quite finished mip count is a problem");
 		} else {
 			return ArchiveInputStream.getByteBuffer(in, entry, false);
 		}
@@ -157,136 +226,182 @@ public class ArchiveFileBtdx extends ArchiveFile {
 
 		if (bsaFileType == BsaFileType.DX10) {
 			return ArchiveInputStreamDX10.getByteBuffer(in, entry, allocateDirect);
+		} else if (bsaFileType == BsaFileType.GNMF) {
+			throw new UnsupportedOperationException("GNMF getByteBuffer not yet quite finished mip count is a problem");
 		} else {
 			return ArchiveInputStream.getByteBuffer(in, entry, allocateDirect);
 		}
 	}
 
 	@Override
-	public void load(boolean isForDisplay) throws DBException, IOException {
+	public void load() throws DBException, IOException {
 		in = new FileChannelRAF(file, "r");// needed elsewhere
 		FileChannel ch = file;
 
 		long pos = 0;
-		
-		// load header
-		byte[] header = new byte[24];
-		int count = ch.read(ByteBuffer.wrap(header), pos);
-		pos += header.length;
-		if (count != 24)
-			throw new EOFException("Archive header is incomplete");
+		// load header id and version so we can get a header length sorted out
+		byte[] header = new byte[8];
+		ch.read(ByteBuffer.wrap(header), pos);
 
 		String id = new String(header, 0, 4);
 		if (!id.equals("BTDX"))
 			throw new DBException("Archive file is not BTDX id " + id + " " + fileName);
 		version = getInteger(header, 4);
-		if (version > 2)
-			throw new DBException("BSA version " + version + " is not supported " + fileName);
-		if (version == 2)
-			System.out.println("BSA version " + version + " is not supported " + fileName);
 
-		String type = new String(header, 8, 4); // GRNL or DX10
-		if (type.equals("GNRL"))
+		int headerLen = 24;
+		if (version == 2)
+			headerLen = 32;
+		if (version == 3)
+			headerLen = 36;
+
+		//reread the header again with the length in play
+		header = new byte[headerLen];
+		pos = 0;
+		ch.read(ByteBuffer.wrap(header), pos);
+
+		String type = new String(header, 8, 4); // GRNL, DX10, GNMF
+		if (type.equals("GNRL")) {
 			bsaFileType = BsaFileType.GNRL;
-		else if (type.equals("DX10"))
+		} else if (type.equals("DX10")) {
 			bsaFileType = BsaFileType.DX10;
-		else
+		} else if (type.equals("GNMF")) {
+			bsaFileType = BsaFileType.GNMF;
+			System.err.println("BSA bsaFileType " + type + " is not (yet) supported " + fileName);
+		} else
 			throw new DBException("BSA bsaFileType " + type + " is not supported " + fileName);
 
 		fileCount = getInteger(header, 12);
 		long nameTableOffset = getLong(header, 16);
-		// end of header read 24 bytes long
+		// end of  24 bytes header read
 
-		// but we are going to jump to the name table (which is after the file records)
-		
-		pos = nameTableOffset;		
+		compressionType = CompressionFormat.ZIP;
 
-		// ready
-		String[] fileNames = new String[fileCount];
+		// later versions have a bit more header data
+		if (version > 1) {
+			Unknown1 = getInteger(header, 24);
+			Unknown2 = getInteger(header, 28);
+		} else if (version > 2) {
+			Unknown3 = getInteger(header, 32);
 
-		// load fileNameBlock
-		byte[] nameBuffer = new byte[0x10000];
-
-		for (int i = 0; i < fileCount; i++) {
-			byte[] b = new byte[2];
-			count = ch.read(ByteBuffer.wrap(b), pos);
-			pos += b.length;
-			int len = getShort(b, 0);
-
-			count = ch.read(ByteBuffer.wrap(nameBuffer, 0, len), pos);
-			pos += len;
-			nameBuffer [len] = 0;// null terminate (FIXME: why?)
-
-			String filename = new String(nameBuffer, 0, len);
-			fileNames [i] = filename;
-			
-			hasDDSFiles = hasDDSFiles || filename.endsWith("dds");
-
-			hasKTXFiles = hasKTXFiles || filename.endsWith("ktx");
-
-			hasASTCFiles = hasASTCFiles || filename.endsWith("astc");
-			
-			hasMaterials = hasMaterials || filename.endsWith("bgsm") || filename.endsWith("bgem");
+			// If version is 3, then Unknown1 means which compression format is used. TODO: Consider renaming Unknown1
+			compressionType = Unknown1 == 1 ? CompressionFormat.LZ4 : CompressionFormat.ZIP;
 		}
 
-		// build up a trival folderhash from all the file names
+		
+		String[] fileNames = null;
+		if (this.isForDisplay || this.hasUndecipheredHash) {
+			// we jump to the name table (which is after the file records)
+			pos = nameTableOffset;
+
+			// ready
+			fileNames = new String[fileCount];
+
+			// load fileNameBlock
+			byte[] nameBuffer = new byte[0x10000];
+			byte[] b = new byte[2];
+
+			for (int i = 0; i < fileCount; i++) {
+				ch.read(ByteBuffer.wrap(b), pos);
+				pos += b.length;
+				int len = getShort(b, 0);
+
+				ch.read(ByteBuffer.wrap(nameBuffer, 0, len), pos);
+				pos += len;
+				nameBuffer[len] = 0;// null terminate (FIXME: why?)
+
+				String filename = new String(nameBuffer, 0, len);
+				fileNames[i] = filename;
+			}
+
+		}
+		// build up a trivial folderhash from all the file names
 		// and preload the archive entries from the data above
-		// reset to below header
-		pos = 24;
+
+		// reset pos to below header
+		pos = headerLen;
 
 		folderHashToFolderMap = new LongSparseArray<Folder>();
-		filenameHashToFileNameMap = new LongSparseArray<String>(fileCount);
 
+		// reuse same buffer declare here
 		byte[] buffer = null;
 		if (bsaFileType == BsaFileType.GNRL) {
 			// we can read it all up front in this case
 			buffer = new byte[fileCount * 36];
-			count = ch.read(ByteBuffer.wrap(buffer), pos);
+			ch.read(ByteBuffer.wrap(buffer), pos);
 			pos += buffer.length;
-		} else {
+		} else if (bsaFileType == BsaFileType.DX10) {
 			buffer = new byte[24];
+		} else if (bsaFileType == BsaFileType.GNMF) {
+			buffer = new byte[72];
 		}
 
 		for (int i = 0; i < fileCount; i++) {
-			
-			String fullFileName = fileNames [i].toLowerCase();
-			fullFileName = fullFileName.trim();
-			if (fullFileName.indexOf("/") != -1) {
-				StringBuilder buildName = new StringBuilder(fullFileName);
-				int sep;
-				while ((sep = buildName.indexOf("/")) >= 0) {
-					buildName.replace(sep, sep + 1, "\\");
-				}
-				fullFileName = buildName.toString();
-			}				
-			
-			int pathSep = fullFileName.lastIndexOf("\\");
-			pathSep = pathSep == -1 ? 0 : pathSep;
-			String folderName = fullFileName.substring(0, pathSep);
-			long folderHash = new HashCode(folderName, true).getHash();
-			Folder folder = folderHashToFolderMap.get(folderHash);
 
-			if (folder == null) {
-				folder = new Folder(0, -1, isForDisplay);
-				folder.fileToHashMap = new LongSparseArray<ArchiveEntry>();
-				folderHashToFolderMap.put(folderHash, folder);
+			// these will only be filled now if isFroDisplay is true so only that case can use them
+			Folder folder = null;
+			String fileName = null;
+			String folderName = null;
+			if (this.isForDisplay || this.hasUndecipheredHash) {
+				String fullFileName = fileNames[i].toLowerCase();
+				fullFileName = fullFileName.trim();
+				if (fullFileName.indexOf("/") != -1) {
+					StringBuilder buildName = new StringBuilder(fullFileName);
+					int sep;
+					while ((sep = buildName.indexOf("/")) >= 0) {
+						buildName.replace(sep, sep + 1, "\\");
+					}
+					fullFileName = buildName.toString();
+				}
+
+				int pathSep = fullFileName.lastIndexOf("\\");
+				pathSep = pathSep == -1 ? 0 : pathSep;
+				folderName = fullFileName.substring(0, pathSep);
+				long folderHash = HashCode.hashCode(folderName, true);
+				folder = folderHashToFolderMap.get(folderHash);
+
+				if (folder == null) {
+					folder = new Folder(0, -1);
+					folder.fileToHashMap = new LongSparseArray<ArchiveEntry>();
+					folderHashToFolderMap.put(folderHash, folder);
+				}
+
+				fileName = fullFileName.substring(pathSep + 1).trim();
 			}
 
-			String fileName = fullFileName.substring(pathSep + 1).trim();
-			long fileHashCode = new HashCode(fileName, false).getHash();
-			filenameHashToFileNameMap.put(fileHashCode, fileName);
-
+			long nameHash = -1;
+			String extension = null;
+			long dirHash = -1;
 			if (bsaFileType == BsaFileType.GNRL) {
-				ArchiveEntry entry;
-				if (isForDisplay)
-					entry = new DisplayableArchiveEntry(this, folderName, fileName);
-				else
-					entry = new ArchiveEntry(this, folderName, fileName);
 
-				// int nameHash = getInteger(buffer, i*36+0);// 00 - name hash?
-				// String ext = new String(buffer, 4,i*36+ 4); // 04 - extension
-				// int dirHash = getInteger(buffer, i*36+8); // 08 - directory hash?
-				// int unk0C = getInteger(buffer, i*36+12); // 0C - flags? 00100100
+				nameHash = getUInteger(buffer, i * 36 + 0);
+				extension = new String(buffer, i * 36 + 4, 4);
+				dirHash = getUInteger(buffer, i * 36 + 8);
+
+				//this is a temp work around
+				if (hasUndecipheredHash) {
+					//I have the folder from above like display
+					dirHash = HashCode.hashCode(folderName, true);
+					nameHash = HashCode.hashCode(fileName, false);
+				}
+
+				ArchiveEntry entry;
+				if (this.isForDisplay) {
+					entry = new DisplayableArchiveEntry(this, folderName, fileName);
+				} else {
+
+					folder = folderHashToFolderMap.get(dirHash);
+
+					if (folder == null) {
+						folder = new Folder(0, -1);
+						folder.fileToHashMap = new LongSparseArray<ArchiveEntry>();
+						folderHashToFolderMap.put(dirHash, folder);
+					}
+					entry = new ArchiveEntry(this, dirHash, nameHash);
+				}
+
+				//Archive Entry doesn't have flags and it's the header of the DX10 entries so need a general sub class
+				int flags = getInteger(buffer, i * 36 + 12); // 0C - flags 00100100
+
 				long offset = getLong(buffer, i * 36 + 16); // 10 - relative to start of file
 				int packedLen = getInteger(buffer, i * 36 + 24); // 18 - packed length (zlib)
 				int unpackedLen = getInteger(buffer, i * 36 + 28); // 1C - unpacked length
@@ -301,49 +416,161 @@ public class ArchiveFileBtdx extends ArchiveFile {
 					compLen = unk20; // what
 
 				entry.setCompressedLength(compLen);
-				folder.fileToHashMap.put(fileHashCode, entry);
+				folder.fileToHashMap.put(nameHash, entry);
 				folder.folderFileCount++;
-			} else {
-				ArchiveEntryDX10 entry;
-				if (isForDisplay)
-					entry = new DisplayableArchiveEntryDX10(this, folderName, fileName);
-				else
-					entry = new ArchiveEntryDX10(this, folderName, fileName);
+			} else if (bsaFileType == BsaFileType.DX10) {
 
-				count = ch.read(ByteBuffer.wrap(buffer), pos);
+				ch.read(ByteBuffer.wrap(buffer), pos);
 				pos += buffer.length;
-				// int nameHash = getInteger(buffer, 0);// 00 - name hash?
-				// String ext = new String(buffer, 4, 4); // 04 - extension
-				// int dirHash = getInteger(buffer, 8); // 08 - directory hash?
-				// int unk0C= buffer[12]& 0xff; //
-				entry.numChunks = buffer [13] & 0xff; //
+
+				nameHash = getUInteger(buffer, 0);
+				extension = new String(buffer, 4, 4);
+				dirHash = getUInteger(buffer, 8);
+				
+				//this is a temp work around
+				if (hasUndecipheredHash) {
+					//I have the folder from above like display
+				//	long bsanameHash = nameHash;
+				//	long bsadirHash = dirHash;
+					
+					
+					dirHash = HashCode.hashCode(folderName, true);
+					nameHash = HashCode.hashCode(fileName, false);
+					
+				/*	if(bsanameHash != nameHash) {
+						System.out.println("bsanameHash " + bsanameHash);
+						System.out.println("nameHash " + nameHash);
+						System.out.println("3 " + HashCode.hashCode3(fileName, false));
+						System.out.println("ffs");
+					}*/
+				}
+
+				ArchiveEntryDX10 entry;
+				if (this.isForDisplay) {
+					entry = new DisplayableArchiveEntryDX10(this, folderName, fileName);
+				} else {
+					folder = folderHashToFolderMap.get(dirHash);
+
+					if (folder == null) {
+						folder = new Folder(0, -1);
+						folder.fileToHashMap = new LongSparseArray<ArchiveEntry>();
+						folderHashToFolderMap.put(dirHash, folder);
+					}
+					entry = new ArchiveEntryDX10(this, dirHash, nameHash);
+				}
+
+				//byte unk1 = buffer[12];
+
+				entry.numChunks = buffer[13] & 0xff;
 				entry.chunkHdrLen = getShort(buffer, 14); // - size of one chunk header
-				entry.height = getShort(buffer, 16); //
-				entry.width = getShort(buffer, 18); //					
-				entry.numMips = buffer [20] & 0xff; //
-				entry.format = buffer [21] & 0xff; // - DXGI_FORMAT
-				entry.unk16 = getShort(buffer, 22); // - 0800
+				entry.height = getShort(buffer, 16);
+				entry.width = getShort(buffer, 18);
+				entry.numMips = buffer[20] & 0xff;
+				entry.format = buffer[21] & 0xff; // - DXGI_FORMAT
+				entry.isCubemap = buffer[22] & 0xff;
+				entry.tileMode = buffer[23] & 0xff;
 
 				if (entry.numChunks != 0) {
 					entry.chunks = new DX10Chunk[entry.numChunks];
 					//read them all off at once
 					byte[] chunkBuffer = new byte[entry.numChunks * 24];
-					count = ch.read(ByteBuffer.wrap(chunkBuffer), pos);
+					ch.read(ByteBuffer.wrap(chunkBuffer), pos);
 					pos += chunkBuffer.length;
 					for (int c = 0; c < entry.numChunks; c++) {
-						entry.chunks [c] = new DX10Chunk();
-						entry.chunks [c].offset = getLong(chunkBuffer, (c * 24) + 0); // 00
-						entry.chunks [c].packedLen = getInteger(chunkBuffer, (c * 24) + 8); // 08
-						entry.chunks [c].unpackedLen = getInteger(chunkBuffer, (c * 24) + 12); // 0C
-						entry.chunks [c].startMip = getShort(chunkBuffer, (c * 24) + 16); // 10
-						entry.chunks [c].endMip = getShort(chunkBuffer, (c * 24) + 18); // 12
-						entry.chunks [c].unk14 = getInteger(chunkBuffer, (c * 24) + 20); // 14 - BAADFOOD
+						entry.chunks[c] = new DX10Chunk();
+						entry.chunks[c].offset = getLong(chunkBuffer, (c * 24) + 0); // 00
+						entry.chunks[c].packedLen = getInteger(chunkBuffer, (c * 24) + 8); // 08
+						entry.chunks[c].unpackedLen = getInteger(chunkBuffer, (c * 24) + 12); // 0C
+						entry.chunks[c].startMip = getShort(chunkBuffer, (c * 24) + 16); // 10
+						entry.chunks[c].endMip = getShort(chunkBuffer, (c * 24) + 18); // 12
+						entry.chunks[c].align = getInteger(chunkBuffer, (c * 24) + 20); // 14 
 					}
 				}
 
-				folder.fileToHashMap.put(fileHashCode, entry);
+				folder.fileToHashMap.put(nameHash, entry);
+				folder.folderFileCount++;
+			} else if (bsaFileType == BsaFileType.GNMF) {
+				 
+				System.err.println("decoding GNMF now, is it any godd at all?");
+
+				ch.read(ByteBuffer.wrap(buffer), pos);
+				pos += buffer.length;
+
+				nameHash = getInteger(buffer, 0);
+				extension = new String(buffer, 4, 4);
+				dirHash = getInteger(buffer, 8);
+				
+				//this is a temp work around
+				if (hasUndecipheredHash) {
+					//I have the folder from above like display
+					dirHash = HashCode.hashCode(folderName, true);
+					nameHash = HashCode.hashCode(fileName, false);
+				}
+
+				//https://github.com/AlexxEG/BSA_Browser/blob/master/Sharp.BSA.BA2/BA2Util/BA2GNFEntry.cs
+
+				ArchiveEntryGNFDX10 entry;
+				if (this.isForDisplay) {
+					entry = new DisplayableArchiveEntryGNFDX10(this, folderName, fileName);
+				} else {
+					folder = folderHashToFolderMap.get(dirHash);
+
+					if (folder == null) {
+						folder = new Folder(0, -1);
+						folder.fileToHashMap = new LongSparseArray<ArchiveEntry>();
+						folderHashToFolderMap.put(dirHash, folder);
+					}
+					entry = new ArchiveEntryGNFDX10(this, dirHash, nameHash);
+				}
+
+				//byte unk1 = buffer[12];				
+				entry.numChunks = buffer[13] & 0xff; //
+				entry.chunkHdrLen = getShort(buffer, 14); // - size of one chunk header
+
+				byte[] GNFHeader = new byte[32];
+				System.arraycopy(buffer, 16, GNFHeader, 0, 32);
+
+				int formatInfo = getInteger(GNFHeader, 4);
+				entry.format = formatInfo >> 20 & ((1 << 6) - 1); // Skip first 20 bits then take 6 next bits
+				entry.numFormat = formatInfo >> 26 & ((1 << 4) - 1); // Skip first 26 bits then take 4 next bits
+
+				int IntFirst14BitMask = (1 << 14) - 1;
+				int wh = getInteger(GNFHeader, 8);
+				entry.width = (wh & IntFirst14BitMask) + 1; // Get first 14 bits
+				entry.height = (wh >> 14 & IntFirst14BitMask) + 1; // Shifts past first 14 bits then get first 14 bits again
+
+				entry.offset = getLong(buffer, 48);
+				entry.size = getInteger(buffer, 56);
+				entry.realSize = getInteger(buffer, 60);
+				entry.unk2 = getInteger(buffer, 64);
+				entry.align = getInteger(buffer, 68);
+
+				if (entry.numChunks != 0) {
+					entry.chunks = new DX10Chunk[entry.numChunks];
+					//read them all off at once
+					byte[] chunkBuffer = new byte[entry.numChunks * 24];
+					ch.read(ByteBuffer.wrap(chunkBuffer), pos);
+					pos += chunkBuffer.length;
+					for (int c = 0; c < entry.numChunks; c++) {
+						entry.chunks[c] = new DX10Chunk();
+						entry.chunks[c].offset = getLong(chunkBuffer, (c * 24) + 0); // 00
+						entry.chunks[c].packedLen = getInteger(chunkBuffer, (c * 24) + 8); // 08
+						entry.chunks[c].unpackedLen = getInteger(chunkBuffer, (c * 24) + 12); // 0C
+						entry.chunks[c].startMip = getShort(chunkBuffer, (c * 24) + 16); // 10
+						entry.chunks[c].endMip = getShort(chunkBuffer, (c * 24) + 18); // 12
+						entry.chunks[c].align = getInteger(chunkBuffer, (c * 24) + 20); // 14
+					}
+				}
+
+				folder.fileToHashMap.put(nameHash, entry);
 				folder.folderFileCount++;
 			}
+
+			// notice extension is 4 chars, 4th one is a 0 which is bad news for java strings
+			hasDDSFiles = hasDDSFiles || extension.startsWith("dds");
+			hasKTXFiles = hasKTXFiles || extension.startsWith("ktx");
+			hasASTCFiles = hasASTCFiles || extension.startsWith("astc");
+			hasMaterials = hasMaterials || extension.startsWith("bgsm") || extension.startsWith("bgem");
 		}
 	}
 
@@ -354,7 +581,7 @@ public class ArchiveFileBtdx extends ArchiveFile {
 
 	@Override
 	public boolean hasTextureFiles() {
-		return hasDDSFiles || hasKTXFiles || hasASTCFiles; 
+		return hasDDSFiles || hasKTXFiles || hasASTCFiles;
 	}
 
 	@Override
@@ -366,7 +593,7 @@ public class ArchiveFileBtdx extends ArchiveFile {
 	public boolean hasDDS() {
 		return hasDDSFiles;
 	}
-	
+
 	@Override
 	public boolean hasKTX() {
 		return hasKTXFiles;
@@ -376,7 +603,7 @@ public class ArchiveFileBtdx extends ArchiveFile {
 	public boolean hasASTC() {
 		return hasASTCFiles;
 	}
-	
+
 	@Override
 	public boolean hasMaterials() {
 		return hasMaterials;

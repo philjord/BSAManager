@@ -30,7 +30,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 	 * @throws IOException
 	 */
 	public ArchiveInputStreamDX10(FileChannelRAF in, ArchiveEntry entry) throws IOException {
-		super(new byte[0]);//reset below once data is availble
+		super(new byte[0]);//reset below once data is available
 
 		FileChannel ch = in.getChannel();
 		
@@ -44,7 +44,15 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 		dst.order(ByteOrder.LITTLE_ENDIAN);
 		insertHeader(tex, dst);
 
-		//FIXME:!!! no check for isCompressed!!
+		
+		//TODO I need to be able to recieve the LZ4 type decompression for version 3 ba22 files.
+		 
+		//TODO I need ot be able to sen dGNFDX10 entries to somethign like this, but not
+		
+		
+		
+		
+		//FIXME:!!! no check for isCompressed!!		
 
 		// Java straight inflate load near =13sec
 		Inflater inflater = new Inflater();
@@ -100,7 +108,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 		//ddsHeader.ddspf.dwSize = 8*4;//sizeof(DDS_PIXELFORMAT);
 		ddsHeader.dwSurfaceFlags = ddsHeader.DDS_SURFACE_FLAGS_TEXTURE | ddsHeader.DDS_SURFACE_FLAGS_MIPMAP;
 
-		if (tex.unk16 == 2049)
+		if (tex.isCubemap != 0)
 			ddsHeader.dwCubemapFlags = ddsHeader.DDS_CUBEMAP_ALLFACES;
 
 		switch (tex.format) {
@@ -141,6 +149,12 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 				//ddsHeader.ddspf.dwFlags = ddsHeader.DDS_FOURCC;
 				//ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('D', 'X', 'T', '5');
 				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				break;
+			case DDS_HEADER.DXGI_FORMAT_BC4_UNORM:
+				ddsHeader.dwHeaderFlags = 0xA1007;
+                //ddsHeader.PixelFormat.dwFlags = DDS.DDS_FOURCC;
+                //ddsHeader.PixelFormat.dwFourCC = DDS.MAKEFOURCC('B', 'C', '4', 'U');
+                ddsHeader.dwPitchOrLinearSize = ((tex.width / 4) * (tex.height / 4) * 8);
 				break;
 			case DDS_HEADER.DXGI_FORMAT_BC5_UNORM:
 				//System.out.println(" BC5 " + entry.getFileName());

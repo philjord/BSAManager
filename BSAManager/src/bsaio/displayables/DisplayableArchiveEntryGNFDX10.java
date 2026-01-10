@@ -1,22 +1,20 @@
 package bsaio.displayables;
 
-import bsaio.ArchiveEntry;
 import bsaio.ArchiveFile;
 import bsaio.HashCode;
+import bsaio.btdx.ArchiveEntryDX10;
+import bsaio.btdx.ArchiveEntryGNFDX10;
 
-public class DisplayableArchiveEntry extends ArchiveEntry implements Displayable
-{
-	
+public class DisplayableArchiveEntryGNFDX10 extends ArchiveEntryGNFDX10 implements Displayable {
 	protected String	fileName;
 	
-	private ArchiveFile archiveFile;
+	private ArchiveFile	archiveFile;
 
-	private String folderName;
+	private String		folderName;
 
-	private String entryName;
+	private String		entryName;
 
-	public DisplayableArchiveEntry(ArchiveFile archiveFile, String folderName, String fileName)
-	{
+	public DisplayableArchiveEntryGNFDX10(ArchiveFile archiveFile, String folderName, String fileName) {
 		super(archiveFile, folderName, fileName);
 		this.archiveFile = archiveFile;
 		this.folderName = folderName;
@@ -25,20 +23,17 @@ public class DisplayableArchiveEntry extends ArchiveEntry implements Displayable
 	}
 
 	@Override
-	public String getName()
-	{
+	public String getName() {
 		return entryName;
 	}
 
 	@Override
-	public String getFolderName()
-	{
+	public String getFolderName() {
 		return folderName;
 	}
 
 	@Override
-	public void setFolderName(String folderName)
-	{
+	public void setFolderName(String folderName) {
 		super.setFolderName(folderName);
 		this.folderName = folderName;
 		entryName = (new StringBuilder()).append(folderName).append("\\").append(fileName).toString();
@@ -48,10 +43,8 @@ public class DisplayableArchiveEntry extends ArchiveEntry implements Displayable
 	public String getFileName() {
 		return fileName;
 	}
-
 	@Override
-	public void setFileName(String fileName)
-	{
+	public void setFileName(String fileName) {
 		if (fileName.length() > 254) {
 			throw new IllegalArgumentException("File name is longer than 254 characters " + fileName);
 		}
@@ -62,14 +55,12 @@ public class DisplayableArchiveEntry extends ArchiveEntry implements Displayable
 	}
 
 	@Override
-	public ArchiveFile getArchiveFile()
-	{
+	public ArchiveFile getArchiveFile() {
 		return archiveFile;
 	}
 
 	@Override
-	public String toString()
-	{
+	public String toString() {
 		return entryName;
 	}
 

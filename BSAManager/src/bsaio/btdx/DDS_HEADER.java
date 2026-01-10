@@ -237,7 +237,7 @@ public class DDS_HEADER
 
 	static int DXGI_FORMAT_BC4_TYPELESS = 79;
 
-	static int DXGI_FORMAT_BC4_UNORM = 80;
+	static final int DXGI_FORMAT_BC4_UNORM = 80;
 
 	static final int DXGI_FORMAT_BC4_SNORM = 81;
 

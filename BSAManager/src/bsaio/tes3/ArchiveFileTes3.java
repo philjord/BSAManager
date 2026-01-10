@@ -16,12 +16,12 @@ import bsaio.HashCode;
 import bsaio.displayables.DisplayableArchiveEntry;
 
 public class ArchiveFileTes3 extends ArchiveFile {
-	private LongSparseArray<String> filenameHashToFileNameMap;
 
-	public ArchiveFileTes3(FileChannel file, String fileName) {
-		super(SIG.TES3, file, fileName);
+	public ArchiveFileTes3(boolean isForDisplay, FileChannel file, String fileName) {
+		super(isForDisplay, SIG.TES3, file, fileName);
 	}
 
+	
 	/**
 	 * CAUTION Super HEAVY WEIGHT!!
 	 * @return
@@ -55,7 +55,7 @@ public class ArchiveFileTes3 extends ArchiveFile {
 		return ret;
 
 	}
-
+	
 	@Override
 	public ArchiveEntry getEntry(String fullFileName) {
 		fullFileName = fullFileName.toLowerCase();
@@ -71,7 +71,7 @@ public class ArchiveFileTes3 extends ArchiveFile {
 
 		int pathSep = fullFileName.lastIndexOf("\\");
 		String folderName = fullFileName.substring(0, pathSep);
-		long folderHash = new HashCode(folderName, true).getHash();
+		long folderHash = HashCode.hashCode(folderName, true);
 		Folder folder = folderHashToFolderMap.get(folderHash);
 
 		if (folder != null) {
@@ -82,15 +82,8 @@ public class ArchiveFileTes3 extends ArchiveFile {
 			}
 
 			String fileName = fullFileName.substring(pathSep + 1);
-			long fileHashCode = new HashCode(fileName, false).getHash();
-			String bsaFileName = filenameHashToFileNameMap.get(fileHashCode);
-			if (bsaFileName != null) {
-				if (bsaFileName.equals(fileName)) {
-					return folder.fileToHashMap.get(fileHashCode);
-				} else {
-					System.out.println("BSA File name mismatch: " + bsaFileName + " " + fileName);
-				}
-			}
+			long fileHashCode = HashCode.hashCode(fileName, false);
+			return folder.fileToHashMap.get(fileHashCode);
 		}
 
 		return null;
@@ -100,10 +93,9 @@ public class ArchiveFileTes3 extends ArchiveFile {
 	protected void loadFolder(Folder folder) throws IOException {
 		throw new UnsupportedOperationException("TES3 is loaded at intial load time, so this should never be called");
 	}
-	
-		
+
 	@Override
-	public void load(boolean isForDisplay) throws DBException, IOException {
+	public void load() throws DBException, IOException {
 		FileChannel ch = file;
 		//reset to start
 		long pos = 0;
@@ -130,8 +122,8 @@ public class ArchiveFileTes3 extends ArchiveFile {
 
 			if (count != buffer.length)
 				throw new EOFException("buffer is incomplete");
-			fileSizes [i] = getInteger(buffer, 0);
-			fileOffsets [i] = getInteger(buffer, 4);
+			fileSizes[i] = getInteger(buffer, 0);
+			fileOffsets[i] = getInteger(buffer, 4);
 		}
 
 		long[] fileNameOffsets = new long[fileCount];
@@ -141,25 +133,25 @@ public class ArchiveFileTes3 extends ArchiveFile {
 			pos += buffer.length;
 			if (count != buffer.length)
 				throw new EOFException("buffer is incomplete");
-			fileNameOffsets [i] = getInteger(buffer, 0);
+			fileNameOffsets[i] = getInteger(buffer, 0);
 		}
 		//restate the offsets as lengths for use below
 		int[] fileNameLengths = new int[fileCount];
 		for (int i = 1; i < fileCount; i++) {
-			fileNameLengths [i - 1] = (int)(fileNameOffsets [i] - fileNameOffsets [i - 1]);
+			fileNameLengths[i - 1] = (int)(fileNameOffsets[i] - fileNameOffsets[i - 1]);
 		}
 		//last filename length calculated				
-		fileNameLengths [fileCount - 1] = (int)((hashtableOffset - (12 * fileCount)) - fileNameOffsets [fileCount - 1]);
+		fileNameLengths[fileCount - 1] = (int)((hashtableOffset - (12 * fileCount)) - fileNameOffsets[fileCount - 1]);
 
 		String[] fileNames = new String[fileCount];
 		for (int i = 0; i < fileCount; i++) {
-			buffer = new byte[fileNameLengths [i]];
+			buffer = new byte[fileNameLengths[i]];
 			count = ch.read(ByteBuffer.wrap(buffer), pos);
 			pos += buffer.length;
 
 			if (count != buffer.length)
 				throw new EOFException("buffer is incomplete");
-			fileNames [i] = new String(buffer, 0, buffer.length - 1);
+			fileNames[i] = new String(buffer, 0, buffer.length - 1);
 		}
 
 		//hash section ignored (just use the tes4+ hash system)					
@@ -169,10 +161,9 @@ public class ArchiveFileTes3 extends ArchiveFile {
 		//build up a trival folderhash from all the file names
 		// and preload the archive entries from the data above
 		folderHashToFolderMap = new LongSparseArray<Folder>();
-		filenameHashToFileNameMap = new LongSparseArray<String>(fileCount);
 
 		for (int i = 0; i < fileCount; i++) {
-			String fullFileName = fileNames [i];
+			String fullFileName = fileNames[i];
 
 			String folderName = "";
 			String fileName = fullFileName.trim();
@@ -182,26 +173,27 @@ public class ArchiveFileTes3 extends ArchiveFile {
 				fileName = fullFileName.substring(pathSep + 1).trim();
 			}
 
-			long folderHash = new HashCode(folderName, true).getHash();
+			long folderHash = HashCode.hashCode(folderName, true);
 			Folder folder = folderHashToFolderMap.get(folderHash);
 
 			if (folder == null) {
-				folder = new Folder(0, -1, isForDisplay);
+				folder = new Folder(0, -1);
 				folder.fileToHashMap = new LongSparseArray<ArchiveEntry>();
 				folderHashToFolderMap.put(folderHash, folder);
 			}
 
-			long fileHashCode = new HashCode(fileName, false).getHash();
-			filenameHashToFileNameMap.put(fileHashCode, fileName);
+			long fileHashCode = HashCode.hashCode(fileName, false);
 
-			ArchiveEntry entry;
-			if (isForDisplay)
+			ArchiveEntry entry = new ArchiveEntry(this, folderHash, fileHashCode);
+
+			if (this.isForDisplay) {
 				entry = new DisplayableArchiveEntry(this, folderName, fileName);
-			else
-				entry = new ArchiveEntry(this, folderName, fileName);
+			} else {
+				entry = new ArchiveEntry(this, folderHash, fileHashCode);
+			}
 
-			entry.setFileOffset(fileDataStartOffset + fileOffsets [i]);
-			entry.setFileLength(fileSizes [i]);
+			entry.setFileOffset(fileDataStartOffset + fileOffsets[i]);
+			entry.setFileLength(fileSizes[i]);
 			entry.setCompressed(false);//never compressed
 			entry.setCompressedLength(-1);
 			folder.fileToHashMap.put(fileHashCode, entry);
@@ -218,7 +210,7 @@ public class ArchiveFileTes3 extends ArchiveFile {
 	public boolean hasTextureFiles() {
 		return true;
 	}
-	
+
 	@Override
 	public boolean hasDDS() {
 		return hasTextureFiles();// we don't put ktx into tes3 format bsa files
@@ -238,7 +230,7 @@ public class ArchiveFileTes3 extends ArchiveFile {
 	public boolean hasSounds() {
 		return true;
 	}
-	
+
 	@Override
 	public boolean hasMaterials() {
 		return false;

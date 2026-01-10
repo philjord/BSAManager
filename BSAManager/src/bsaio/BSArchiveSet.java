@@ -38,8 +38,8 @@ public abstract class BSArchiveSet extends ArrayList<ArchiveFile> {
 				try {
 					long start = System.currentTimeMillis();
 					System.out.println("BSA File Set loading " + fileName);
-					ArchiveFile archiveFile = ArchiveFile.createArchiveFile(file, fileName);
-					archiveFile.load(isForDisplay);
+					ArchiveFile archiveFile = ArchiveFile.createArchiveFile(isForDisplay, file, fileName);
+					archiveFile.load();
 					synchronized (BSArchiveSet.this) {
 						add(archiveFile);
 					}
