@@ -13,6 +13,7 @@ import bsaio.ArchiveEntry;
 import bsaio.ArchiveFile;
 import bsaio.DBException;
 import bsaio.HashCode;
+import bsaio.ArchiveFile.SIG;
 import bsaio.displayables.DisplayableArchiveEntry;
 import tools.io.FileChannelRAF;
 
@@ -23,31 +24,11 @@ public class ArchiveFileBsa extends ArchiveFile {
 
 	private int						archiveFlags;				//in BSA id
 
-	//if ((archiveFlags & 3) != 3)
-	//	throw new DBException("Archive does not use directory/file names " + fileName);
-
-	//isCompressed = (archiveFlags & 4) != 0;
-	//defaultCompressed = (archiveFlags & 0x100) != 0;// note value=256 (this is hex not binary)
-
 	private int						fileFlags;					//in BSA id
-
-	//	public boolean hasNifOrKf() {	return (fileFlags & 1) != 0 || (fileFlags & 0x40) != 0;
-	//	public boolean hasDDS() {		return (fileFlags & 2) != 0;
-	//	public boolean hasSounds() {		return (fileFlags & 8) != 0 || (fileFlags & 0x10) != 0;
 
 	private boolean					isCompressed;
 
 	private boolean					defaultCompressed;
-
-	private boolean					hasDDSFiles		= false;
-
-	private boolean					hasKTXFiles		= false;
-
-	private boolean					hasASTCFiles	= false;
-
-	private boolean					hasMaterials	= false;
-
-	//bgsm and bgem are material files
 
 	public ArchiveFileBsa(boolean isForDisplay, FileChannel file, String fileName) {
 		super(isForDisplay, SIG.BSA, file, fileName);
@@ -171,7 +152,6 @@ public class ArchiveFileBsa extends ArchiveFile {
 
 				ArchiveEntry entry;
 				if (this.isForDisplay) {
-					//OK this is a problem these names were parsed in the load step, so might have to put taht back about now
 					String fileName = filenameHashToFileNameMap.get(fileHash);
 
 					if (fileName == null)
@@ -182,37 +162,7 @@ public class ArchiveFileBsa extends ArchiveFile {
 					entry = new ArchiveEntry(this, HashCode.hashCode(folderName, true), fileHash);
 				}
 
-				if (version == 104) {
-					//FO3 - Fallout 3
-					//TES5 - Skyrim
-
-					// go to data area and read sizes off now
-					if (defaultCompressed) {
-						count = ch.read(ByteBuffer.wrap(len), dataOffset);
-						length = (len[0] & 0xff) + 1;
-						dataOffset += length;
-						dataLength -= length;
-					}
-
-					//now do something a bit different if the other compressed flag is set
-					int compressedLength = 0;
-					if (isCompressed) {
-
-						count = ch.read(ByteBuffer.wrap(buffer, 0, 4), dataOffset);
-						if (count != 4)
-							throw new EOFException("Compressed data is incomplete");
-
-						dataOffset += 4L;
-						compressedLength = dataLength - 4;
-						dataLength = getInteger(buffer, 0);
-					}
-
-					entry.setFileOffset(dataOffset);
-					entry.setFileLength(dataLength);
-					entry.setCompressed(isCompressed);
-					entry.setCompressedLength(compressedLength);
-
-				} else if (version == 103) {
+				if (version == 103) {
 					//TES4 - Oblivion
 
 					boolean compressed = isCompressed;
@@ -239,6 +189,38 @@ public class ArchiveFileBsa extends ArchiveFile {
 					entry.setFileLength(unCompressedLength); //different to 104				
 					entry.setCompressed(compressed); //different to 104
 					entry.setCompressedLength(dataLength);//different to 104
+				} else if (version == 104) {
+					//FO3 - Fallout 3
+					//TES5 - Skyrim
+
+					// go to data area and read sizes off now
+					if (defaultCompressed) {
+						count = ch.read(ByteBuffer.wrap(len), dataOffset);
+						length = (len[0] & 0xff) + 1;
+						dataOffset += length;
+						dataLength -= length;
+					}
+
+					//now do something a bit different if the other compressed flag is set
+					int compressedLength = 0;
+					if (isCompressed) {
+
+						count = ch.read(ByteBuffer.wrap(buffer, 0, 4), dataOffset);
+						if (count != 4)
+							throw new EOFException("Compressed data is incomplete");
+
+						dataOffset += 4L;// move past the uncompressed size into compressed data pointer
+						compressedLength = dataLength - 4;// compressed size has uncompressed size int taken off		
+						dataLength = getInteger(buffer, 0);
+					}
+
+					entry.setFileOffset(dataOffset);
+					entry.setFileLength(dataLength);
+					entry.setCompressed(isCompressed);
+					entry.setCompressedLength(compressedLength);
+
+				} else {
+					throw new UnsupportedOperationException("BSA version " + version + " is not supported " + fileName);
 				}
 
 				folder.fileToHashMap.put(fileHash, entry);
@@ -290,54 +272,17 @@ public class ArchiveFileBsa extends ArchiveFile {
 		isCompressed = (archiveFlags & 4) != 0;
 		defaultCompressed = (archiveFlags & 0x100) != 0;// note value=256 (this is hex not binary)
 
-		//load fileNameBlock
-		byte[] nameBuffer = new byte[fileNamesLength];
-		long nameOffset = folderOffset + (folderCount * 16) + (fileCount * 16) + (folderCount + folderNamesLength);
-		pos = nameOffset;
-
-		count = ch.read(ByteBuffer.wrap(nameBuffer), pos);
-		pos += nameBuffer.length;
-		if (count != fileNamesLength)
-			throw new EOFException("File names buffer is incomplete " + fileName);
-
-		if (isForDisplay)
-			filenameHashToFileNameMap = new LongSparseArray<String>(fileCount);
-
-		int bufferIndex = 0;
-		for (int nameIndex = 0; nameIndex < fileCount; nameIndex++) {
-			int startIndex = bufferIndex;
-			// search through for the end of the filename
-			for (; bufferIndex < fileNamesLength && nameBuffer[bufferIndex] != 0; bufferIndex++) {
-				;
-			}
-
-			if (bufferIndex >= fileNamesLength)
-				throw new DBException("File names buffer truncated " + fileName);
-
-			String filename = new String(nameBuffer, startIndex, bufferIndex - startIndex);
-
-			//these must be loaded and hashed now as the folder only has the hash values in it
-			if (isForDisplay)
-				filenameHashToFileNameMap.put(HashCode.hashCode(filename, false), filename);
-
-			hasDDSFiles = hasDDSFiles || filename.endsWith("dds");
-			hasKTXFiles = hasKTXFiles || filename.endsWith("ktx");
-			hasASTCFiles = hasASTCFiles || filename.endsWith("astc");
-			hasMaterials = hasMaterials || filename.endsWith("bgsm") || filename.endsWith("bgem");
-
-			bufferIndex++;
-		}
-
 		folderHashToFolderMap = new LongSparseArray<Folder>(folderCount);
 
 		byte buffer[] = new byte[16];
+		pos = folderOffset;
 		for (int folderIndex = 0; folderIndex < folderCount; folderIndex++) {
 			// pull data in a buffer for reading
-			count = ch.read(ByteBuffer.wrap(buffer), folderOffset);
+			count = ch.read(ByteBuffer.wrap(buffer), pos);
 			if (count != 16)
 				throw new EOFException("Folder record is incomplete " + fileName);
 
-			folderOffset += 16L; //set pointer ready for next folderIndex for loop
+			pos += 16L; //set pointer ready for next folderIndex for loop
 
 			// get the folder record data out off the buffer read above
 			long folderHash = getLong(buffer, 0);
@@ -348,10 +293,82 @@ public class ArchiveFileBsa extends ArchiveFile {
 
 		}
 
+		if (isForDisplay) {
+			//load fileNameBlock
+			byte[] nameBuffer = new byte[fileNamesLength];
+			long nameOffset = folderOffset + (folderCount * 16) + (fileCount * 16) + (folderCount + folderNamesLength);
+			pos = nameOffset;
+
+			count = ch.read(ByteBuffer.wrap(nameBuffer), pos);
+			pos += nameBuffer.length;
+			if (count != fileNamesLength)
+				throw new EOFException("File names buffer is incomplete " + fileName);
+
+			filenameHashToFileNameMap = new LongSparseArray<String>(fileCount);
+
+			int bufferIndex = 0;
+			for (int nameIndex = 0; nameIndex < fileCount; nameIndex++) {
+				int startIndex = bufferIndex;
+				// search through for the end of the filename
+				for (; bufferIndex < fileNamesLength && nameBuffer[bufferIndex] != 0; bufferIndex++) {
+					;
+				}
+
+				if (bufferIndex >= fileNamesLength)
+					throw new DBException("File names buffer truncated " + fileName);
+
+				String filename = new String(nameBuffer, startIndex, bufferIndex - startIndex);
+
+				filenameHashToFileNameMap.put(HashCode.hashCode(filename, false), filename);
+
+				bufferIndex++;
+			}
+
+			//output some interesting facts
+			System.out.println("archiveFlags for " + this.fileName + " " + this.archiveFlags);
+			System.out.println("fileFlags    for " + this.fileName + " " + this.fileFlags);
+
+			System.out.println("hasNifOrKf() " + hasNifOrKf());
+			System.out.println("hasTextureFiles() " + hasTextureFiles());
+			System.out.println("hasDDS() " + hasDDS());
+			System.out.println("hasKTX( " + hasKTX());
+			System.out.println("hasSounds() " + hasSounds());
+			System.out.println("hasMaterials() " + hasMaterials());
+		}
+
 	}
 
 	@Override
 	public boolean hasNifOrKf() {
+		
+		/* from DDSToKTXbsaConverter
+		 * int sep = fileName.lastIndexOf('.');
+		if (sep >= 0) {
+			String ext = fileName.substring(sep);
+			if (ext.equals(".nif")) {
+				fileFlags |= 1;
+				archiveFlags |= 0x80;
+			} else if (ext.equals(".dds") || ext.equals(".ktx")) {
+				fileFlags |= 2;
+				archiveFlags |= 0x100;
+			} else if (ext.equals(".kf")) {
+				fileFlags |= 0x40;
+			} else if (ext.equals(".wav")) {
+				fileFlags |= 8;
+				archiveFlags |= 0x10;
+			} else if (ext.equals(".lip")) {
+				fileFlags |= 8;
+			} else if (ext.equals(".mp3")) {
+				fileFlags |= 0x10;
+				archiveFlags |= 0x10;				
+			} else if (ext.equals(".ogg")) {
+				fileFlags |= 0x10;				
+			} else if (ext.equals(".xml")) {
+				fileFlags |= 0x100;
+			}
+		}
+		 */
+
 		return (fileFlags & 1) != 0 || (fileFlags & 0x40) != 0;
 	}
 
@@ -362,17 +379,12 @@ public class ArchiveFileBsa extends ArchiveFile {
 
 	@Override
 	public boolean hasDDS() {
-		return hasDDSFiles;
+		return hasTextureFiles() && !this.fileName.endsWith("_ktx.bsa");
 	}
 
 	@Override
 	public boolean hasKTX() {
-		return hasKTXFiles;
-	}
-
-	@Override
-	public boolean hasASTC() {
-		return hasASTCFiles;
+		return hasTextureFiles() && this.fileName.endsWith("_ktx.bsa");
 	}
 
 	@Override
@@ -382,7 +394,7 @@ public class ArchiveFileBsa extends ArchiveFile {
 
 	@Override
 	public boolean hasMaterials() {
-		return hasMaterials;
+		return true;
 	}
 
 }

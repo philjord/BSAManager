@@ -1,10 +1,6 @@
 package bsaio;
 
 public class ArchiveEntry implements Comparable<ArchiveEntry> {
-	//TODO: this should be in the Displayable version
-	// only needed in order to   getFilesInFolder(String folderName)  from MeshSource interface
-	// however I can't easily reload Ba2 and tes3 archives by folder so it's here for now
-	//	protected String	fileName;
 
 	private long	folderHashCode;
 
@@ -17,6 +13,12 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 	private int		compressedLength;
 
 	private boolean	isCompressed;
+	
+	public enum CompressionFormat {
+		ZIP, LZ4
+	};
+
+	private CompressionFormat compressionType = CompressionFormat.ZIP;
 
 	/**
 	 * This is the expensive way to load up entries
@@ -118,6 +120,14 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 	@Override
 	public String toString() {
 		return "ArchiveEntry " + folderHashCode + " " + fileHashCode;
+	}
+
+	public CompressionFormat getCompressionType() {
+		return compressionType;
+	}
+
+	public void setCompressionType(CompressionFormat compressionType) {
+		this.compressionType = compressionType;
 	}
 
 }

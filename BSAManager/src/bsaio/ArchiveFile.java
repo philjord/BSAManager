@@ -154,7 +154,8 @@ public abstract class ArchiveFile {
 	 */
 	protected abstract void loadFolder(Folder folder) throws IOException;
 
-	public static ArchiveFile createArchiveFile(boolean isForDisplay, FileChannel file, String fileName) throws DBException, IOException {
+	public static ArchiveFile createArchiveFile(boolean isForDisplay, FileChannel file, String fileName)
+			throws DBException, IOException {
 
 		FileChannelRAF in = new FileChannelRAF(file, "r");
 		FileChannel ch = in.getChannel();
@@ -201,8 +202,6 @@ public abstract class ArchiveFile {
 
 	public abstract boolean hasKTX();
 
-	public abstract boolean hasASTC();
-
 	public abstract boolean hasSounds();
 
 	public abstract boolean hasMaterials();
@@ -210,7 +209,7 @@ public abstract class ArchiveFile {
 	protected static int getShort(byte buffer[], int offset) {
 		return buffer[offset + 0] & 0xff | (buffer[offset + 1] & 0xff) << 8;
 	}
-	
+
 	protected static int getUShort(byte buffer[], int offset) {
 		return (buffer[offset + 0] & 0xff | (buffer[offset + 1] & 0xff) << 8) & 0xffffffff;
 	}
@@ -219,12 +218,12 @@ public abstract class ArchiveFile {
 		return buffer[offset + 0]	& 0xff	| (buffer[offset + 1] & 0xff) << 8 | (buffer[offset + 2] & 0xff) << 16
 				| (buffer[offset + 3] & 0xff) << 24;
 	}
-	
+
 	protected static long getUInteger(byte buffer[], int offset) {
 		return (buffer[offset + 0]	& 0xff	| (buffer[offset + 1] & 0xff) << 8 | (buffer[offset + 2] & 0xff) << 16
 				| (buffer[offset + 3] & 0xff) << 24) & 0xffffffffL;
 	}
-	
+
 	protected static long getLong(byte buffer[], int offset) {
 		return (buffer[offset + 0] & 255L) << 0 | (buffer[offset + 1] & 255L) << 8 | (buffer[offset + 2] & 255L) << 16
 				| (buffer[offset + 3] & 255L) << 24 | (buffer[offset + 4] & 255L) << 32

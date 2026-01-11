@@ -222,11 +222,6 @@ public class ArchiveFileTes3 extends ArchiveFile {
 	}
 
 	@Override
-	public boolean hasASTC() {
-		return false;
-	}
-
-	@Override
 	public boolean hasSounds() {
 		return true;
 	}

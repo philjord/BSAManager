@@ -14,6 +14,8 @@ import bsaio.ArchiveEntry;
 import bsaio.btdx.ArchiveEntryDX10.DX10Chunk;
 import bsaio.btdx.DDS_HEADER.DDS_HEADER_DXT10;
 import bsaio.btdx.DDS_HEADER.DDS_PIXELFORMAT;
+import net.jpountz.lz4.LZ4Factory;
+import net.jpountz.lz4.LZ4FastDecompressor;
 import tools.io.FileChannelRAF;
 
 /**
@@ -33,59 +35,90 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 		super(new byte[0]);//reset below once data is available
 
 		FileChannel ch = in.getChannel();
-		
+
 		ArchiveEntryDX10 tex = (ArchiveEntryDX10)entry;
 		int requiredBufferSize = 32 * 4;
 		for (int j = 0; j < tex.chunks.length; j++) {
-			requiredBufferSize += tex.chunks [j].unpackedLen;
+			requiredBufferSize += tex.chunks[j].unpackedLen;
 		}
 		// to collect up all the chunks, note not direct as we want the byte[] behind it
 		ByteBuffer dst = ByteBuffer.allocate(requiredBufferSize);
 		dst.order(ByteOrder.LITTLE_ENDIAN);
 		insertHeader(tex, dst);
 
-		
-		//TODO I need to be able to recieve the LZ4 type decompression for version 3 ba22 files.
-		 
-		//TODO I need ot be able to sen dGNFDX10 entries to somethign like this, but not
-		
-		
-		
-		
-		//FIXME:!!! no check for isCompressed!!		
+		//FIXME I need ot be able to sen dGNFDX10 entries to somethign like this, but not
+		//FIXME:!!! no check for isCompressed!!	
+		if (entry.getCompressionType() == ArchiveEntry.CompressionFormat.ZIP) {		
 
-		// Java straight inflate load near =13sec
-		Inflater inflater = new Inflater();
-		// each chunk can have any number of mips in it, so later one could be bigger than earlier!
-		byte[] dstBuff = new byte[tex.chunks [0].unpackedLen];
-		byte[] srcBuf = new byte[tex.chunks [0].packedLen];
-		for (int j = 0; j < tex.chunks.length; j++) {
-			DX10Chunk chunk = tex.chunks [j];
+			// Java straight inflate load near =13sec
+			Inflater inflater = new Inflater();
+			// each chunk can have any number of mips in it, so later one could be bigger than earlier!
+			byte[] dstBuff = new byte[tex.chunks[0].unpackedLen];
+			byte[] srcBuf = new byte[tex.chunks[0].packedLen];
+			for (int j = 0; j < tex.chunks.length; j++) {
+				DX10Chunk chunk = tex.chunks[j];
 
-			if (chunk.packedLen > srcBuf.length)
-				srcBuf = new byte[chunk.packedLen];
+				if (chunk.packedLen > srcBuf.length)
+					srcBuf = new byte[chunk.packedLen];
 
-			if (chunk.unpackedLen > dstBuff.length)
-				dstBuff = new byte[chunk.unpackedLen];
+				if (chunk.unpackedLen > dstBuff.length)
+					dstBuff = new byte[chunk.unpackedLen];
 
-			//byte[] srcBuf = new byte[chunk.packedLen];
-			int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
-			
-			if (c < 0)
-				throw new EOFException("Unexpected end of stream while inflating file");
+				int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
 
-			inflater.reset();
-			inflater.setInput(srcBuf, 0, chunk.packedLen);
+				if (c < 0)
+					throw new EOFException("Unexpected end of stream while inflating file");
 
-			try {
-				int count = inflater.inflate(dstBuff);
+				inflater.reset();
+				inflater.setInput(srcBuf, 0, chunk.packedLen);
+
+				try {
+					int count = inflater.inflate(dstBuff);
+					if (count != chunk.unpackedLen)
+						System.err.println("Inflate count issue! " + this);
+				} catch (DataFormatException e) {
+					e.printStackTrace();
+				}
+
+				dst.put(dstBuff, 0, chunk.unpackedLen);
+			}
+		} else if (entry.getCompressionType() == ArchiveEntry.CompressionFormat.LZ4) {
+
+			//https://github.com/yawkat/lz4-java
+			//	<dependency>
+			//    <groupId>at.yawk.lz4</groupId>
+			//    <artifactId>lz4-java</artifactId>
+			//		<version>1.10.2</version>
+			//</dependency>
+
+			LZ4Factory factory = LZ4Factory.fastestInstance();
+			LZ4FastDecompressor decompressor = factory.fastDecompressor();
+
+			byte[] dstBuff = new byte[tex.chunks[0].unpackedLen];
+			byte[] srcBuf = new byte[tex.chunks[0].packedLen];
+			for (int j = 0; j < tex.chunks.length; j++) {
+				DX10Chunk chunk = tex.chunks[j];
+
+				if (chunk.packedLen > srcBuf.length)
+					srcBuf = new byte[chunk.packedLen];
+
+				if (chunk.unpackedLen > dstBuff.length)
+					dstBuff = new byte[chunk.unpackedLen];
+
+				int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
+
+				if (c < 0)
+					throw new EOFException("Unexpected end of stream while inflating file");
+
+				int count = decompressor.decompress(srcBuf, 0, dstBuff, 0, chunk.unpackedLen);
 				if (count != chunk.unpackedLen)
 					System.err.println("Inflate count issue! " + this);
-			} catch (DataFormatException e) {
-				e.printStackTrace();
+
+				dst.put(dstBuff, 0, chunk.unpackedLen);
 			}
 
-			dst.put(dstBuff, 0, chunk.unpackedLen);
+		} else {
+			new Throwable("Unknown ArchiveEntry compressionType! " + entry.getCompressionType()).printStackTrace();
 		}
 
 		this.buf = dst.array();
@@ -130,7 +163,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 				//ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('D', 'X', 'T', '3');
 				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
 				break;
- 
+
 			case DDS_HEADER.DXGI_FORMAT_BC2_UNORM_SRGB:
 				ddsHeader.ddspf = ddsHeader.DDSPF_DXT3;
 				//ddsHeader.ddspf.dwFlags = ddsHeader.DDS_FOURCC;
@@ -152,9 +185,9 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 				break;
 			case DDS_HEADER.DXGI_FORMAT_BC4_UNORM:
 				ddsHeader.dwHeaderFlags = 0xA1007;
-                //ddsHeader.PixelFormat.dwFlags = DDS.DDS_FOURCC;
-                //ddsHeader.PixelFormat.dwFourCC = DDS.MAKEFOURCC('B', 'C', '4', 'U');
-                ddsHeader.dwPitchOrLinearSize = ((tex.width / 4) * (tex.height / 4) * 8);
+				//ddsHeader.PixelFormat.dwFlags = DDS.DDS_FOURCC;
+				//ddsHeader.PixelFormat.dwFourCC = DDS.MAKEFOURCC('B', 'C', '4', 'U');
+				ddsHeader.dwPitchOrLinearSize = ((tex.width / 4) * (tex.height / 4) * 8);
 				break;
 			case DDS_HEADER.DXGI_FORMAT_BC5_UNORM:
 				//System.out.println(" BC5 " + entry.getFileName());
@@ -162,26 +195,25 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 				ddsHeader.ddspf = ddsHeader.DDSPF_ATI2;
 				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
 				break;
-				
-				
-				/*
-				 * Apparently better for normals data
-				 * https://www.gamedev.net/forums/topic/578936-directx-10-unorm-vs-snorm/
-				 * 
-				 * snorm format is for signed values. 
-				 * The scale/biasing amount depends the number of bits per channel in the format. 
-				 * A float32 snorm would provide the best precision.
-				 *  You can store the value directly within the range [-1.0,1.0]. 
-				 *  Larger things should get clamped. So mostly that confirms what you already knew. 
-				 * 
-				 * https://learn.microsoft.com/en-us/windows/win32/api/dxgiformat/ne-dxgiformat-dxgi_format
-					DXGI_FORMAT_BC5_UNORM
-					Value: 83
-					Two-component block-compression format. For information about block-compression formats, see Texture Block Compression in Direct3D 11.
-					DXGI_FORMAT_BC5_SNORM
-					Value: 84
-					Two-component block-compression format. For information about block-compression formats, see Texture Block Compression in Direct3D 11.
-				 */
+
+			/*
+			 * Apparently better for normals data
+			 * https://www.gamedev.net/forums/topic/578936-directx-10-unorm-vs-snorm/
+			 * 
+			 * snorm format is for signed values. 
+			 * The scale/biasing amount depends the number of bits per channel in the format. 
+			 * A float32 snorm would provide the best precision.
+			 *  You can store the value directly within the range [-1.0,1.0]. 
+			 *  Larger things should get clamped. So mostly that confirms what you already knew. 
+			 * 
+			 * https://learn.microsoft.com/en-us/windows/win32/api/dxgiformat/ne-dxgiformat-dxgi_format
+				DXGI_FORMAT_BC5_UNORM
+				Value: 83
+				Two-component block-compression format. For information about block-compression formats, see Texture Block Compression in Direct3D 11.
+				DXGI_FORMAT_BC5_SNORM
+				Value: 84
+				Two-component block-compression format. For information about block-compression formats, see Texture Block Compression in Direct3D 11.
+			 */
 			case DDS_HEADER.DXGI_FORMAT_BC5_SNORM://FIXME is this signed ints or something?
 				//System.out.println(" BC5 " + entry.getFileName());
 
@@ -225,15 +257,15 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 4; // 32bpp
 				break;
 			case DDS_HEADER.DXGI_FORMAT_R8G8B8A8_UNORM:
-					ddsHeader.ddspf = new DDS_PIXELFORMAT();
-					ddsHeader.ddspf.dwFlags = ddsHeader.DDS_RGBA; 
-					ddsHeader.ddspf.dwRGBBitCount = 32;
-					ddsHeader.ddspf.dwRBitMask = 0x00FF0000;
-					ddsHeader.ddspf.dwGBitMask = 0x0000FF00;
-					ddsHeader.ddspf.dwBBitMask = 0x000000FF;
-					ddsHeader.ddspf.dwABitMask = 0xFF000000;
-					ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 4; // 32bpp
-					break;
+				ddsHeader.ddspf = new DDS_PIXELFORMAT();
+				ddsHeader.ddspf.dwFlags = ddsHeader.DDS_RGBA;
+				ddsHeader.ddspf.dwRGBBitCount = 32;
+				ddsHeader.ddspf.dwRBitMask = 0x00FF0000;
+				ddsHeader.ddspf.dwGBitMask = 0x0000FF00;
+				ddsHeader.ddspf.dwBBitMask = 0x000000FF;
+				ddsHeader.ddspf.dwABitMask = 0xFF000000;
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 4; // 32bpp
+				break;
 			case DDS_HEADER.DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
 				ddsHeader.ddspf = new DDS_PIXELFORMAT();
 				ddsHeader.ddspf.dwFlags = ddsHeader.DDS_RGBA;
@@ -251,8 +283,6 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 				ddsHeader.ddspf.dwRBitMask = 0xFF;
 				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
 				break;
-				
-
 
 			default:
 				System.err.println("unhandled format " + tex.format + " " + tex);
@@ -319,7 +349,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 		ArchiveEntryDX10 tex = (ArchiveEntryDX10)entry;
 		int requiredBufferSize = 32 * 4;
 		for (int j = 0; j < tex.chunks.length; j++) {
-			requiredBufferSize += tex.chunks [j].unpackedLen;
+			requiredBufferSize += tex.chunks[j].unpackedLen;
 		}
 		// collect up all the chunks
 		ByteBuffer dst = null;
@@ -338,10 +368,10 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 		// Java straight inflate load near =13sec
 		Inflater inflater = new Inflater();
 		// each chunk can have any number of mips in it, so later one could be bigger than earlier!
-		byte[] dstBuff = new byte[tex.chunks [0].unpackedLen];
-		byte[] srcBuf = new byte[tex.chunks [0].packedLen];
+		byte[] dstBuff = new byte[tex.chunks[0].unpackedLen];
+		byte[] srcBuf = new byte[tex.chunks[0].packedLen];
 		for (int j = 0; j < tex.chunks.length; j++) {
-			DX10Chunk chunk = tex.chunks [j];
+			DX10Chunk chunk = tex.chunks[j];
 
 			if (chunk.packedLen > srcBuf.length)
 				srcBuf = new byte[chunk.packedLen];
