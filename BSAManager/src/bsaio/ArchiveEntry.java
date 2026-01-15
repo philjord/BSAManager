@@ -119,7 +119,7 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 
 	@Override
 	public String toString() {
-		return "ArchiveEntry " + folderHashCode + " " + fileHashCode;
+		return "ArchiveEntry folderHash:" + folderHashCode + " fileHash:" + fileHashCode;
 	}
 
 	public CompressionFormat getCompressionType() {
