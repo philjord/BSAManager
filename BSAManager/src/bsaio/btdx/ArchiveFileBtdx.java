@@ -247,6 +247,8 @@ public class ArchiveFileBtdx extends ArchiveFile {
 
 			// If version is 3, then Unknown1 means which compression format is used. TODO: Consider renaming Unknown1
 			compressionType = Unknown1 == 1 ? CompressionFormat.LZ4 : CompressionFormat.ZIP;
+			if(compressionType == CompressionFormat.LZ4)
+				System.out.println("Archive has LZ4 compression!! " + this.fileName);
 		}
 
 		String[] fileNames = null;
