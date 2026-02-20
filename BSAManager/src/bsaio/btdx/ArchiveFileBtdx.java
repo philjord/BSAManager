@@ -44,21 +44,23 @@ public class ArchiveFileBtdx extends ArchiveFile {
 		GNMF // also a DX10 format with 72 bytes of header and 24 byte chunks
 	};
 
-	private BsaFileType	bsaFileType;			// in BTDX id
+	private BsaFileType			bsaFileType;			// in BTDX id
 
-	private boolean		hasDDSFiles		= false;
+	private boolean				hasDDSFiles		= false;
 
-	private boolean		hasKTXFiles		= false;
+	private boolean				hasKTXFiles		= false;
 
-	private boolean		hasMaterials	= false;
+	private boolean				hasMaterials	= false;
 
-	private int			Unknown1;
+	private boolean				hasMaterialCDB	= false;
 
-	private int			Unknown2;
+	private int					Unknown1;
 
-	private int			Unknown3;
+	private int					Unknown2;
 
-	private CompressionFormat compressionType;
+	private int					Unknown3;
+
+	private CompressionFormat	compressionType;
 
 	public ArchiveFileBtdx(boolean isForDisplay, FileChannel file, String fileName) {
 		super(isForDisplay, SIG.BTDX, file, fileName);
@@ -247,8 +249,8 @@ public class ArchiveFileBtdx extends ArchiveFile {
 
 			// If version is 3, then Unknown1 means which compression format is used. TODO: Consider renaming Unknown1
 			compressionType = Unknown1 == 1 ? CompressionFormat.LZ4 : CompressionFormat.ZIP;
-			if(compressionType == CompressionFormat.LZ4)
-				System.out.println("Archive has LZ4 compression!! " + this.fileName);
+			//if(compressionType == CompressionFormat.LZ4)
+			//	System.out.println("Archive has LZ4 compression!! " + this.fileName);
 		}
 
 		String[] fileNames = null;
@@ -346,10 +348,10 @@ public class ArchiveFileBtdx extends ArchiveFile {
 					// this hashing is new so keep an eye on it
 					if (dirHash != HashCode.hashCodeCRC32(folderName, true)
 						|| nameHash != HashCode.hashCodeCRC32(fileName, false)) {
-						System.out.println("folderName " + folderName + " dirHash " + dirHash);
-						System.out.println("crc32  " + HashCode.hashCodeCRC32(folderName, true));
-						System.out.println("fileName " + fileName + " nameHash " + nameHash);
-						System.out.println("crc32  " + HashCode.hashCodeCRC32(fileName, false));
+						System.out.println("hash off folderName "	+ folderName + " dirHash " + dirHash + " crc32  "
+											+ HashCode.hashCodeCRC32(folderName, true));
+						System.out.println("hash off fileName " + fileName + " nameHash " + nameHash + " crc32  "
+											+ HashCode.hashCodeCRC32(fileName, false));
 					}
 				} else {
 
@@ -398,10 +400,10 @@ public class ArchiveFileBtdx extends ArchiveFile {
 					// this hashing is new so keep an eye on it
 					if (dirHash != HashCode.hashCodeCRC32(folderName, true)
 						|| nameHash != HashCode.hashCodeCRC32(fileName, false)) {
-						System.out.println("folderName " + folderName + " dirHash " + dirHash);
-						System.out.println("crc32  " + HashCode.hashCodeCRC32(folderName, true));
-						System.out.println("fileName " + fileName + " nameHash " + nameHash);
-						System.out.println("crc32  " + HashCode.hashCodeCRC32(fileName, false));
+						System.out.println("hash off folderName "	+ folderName + " dirHash " + dirHash + " crc32  "
+											+ HashCode.hashCodeCRC32(folderName, true));
+						System.out.println("hash off fileName " + fileName + " nameHash " + nameHash + " crc32  "
+											+ HashCode.hashCodeCRC32(fileName, false));
 					}
 				} else {
 					folder = folderHashToFolderMap.get(dirHash);
@@ -412,7 +414,7 @@ public class ArchiveFileBtdx extends ArchiveFile {
 						folderHashToFolderMap.put(dirHash, folder);
 					}
 					entry = new ArchiveEntryDX10(this, dirHash, nameHash);
-				}				
+				}
 				entry.setCompressionType(compressionType);
 
 				//byte unk1 = buffer[12];
@@ -464,11 +466,10 @@ public class ArchiveFileBtdx extends ArchiveFile {
 					// this hashing is new so keep an eye on it
 					if (dirHash != HashCode.hashCodeCRC32(folderName, true)
 						|| nameHash != HashCode.hashCodeCRC32(fileName, false)) {
-						System.out.println("folderName " + folderName + " dirHash " + dirHash);
-						System.out.println("crc32  " + HashCode.hashCodeCRC32(folderName, true));
-						System.out.println("fileName " + fileName + " nameHash " + nameHash);
-						System.out.println("crc32  " + HashCode.hashCodeCRC32(fileName, false));
-
+						System.out.println("hash off folderName "	+ folderName + " dirHash " + dirHash + " crc32  "
+											+ HashCode.hashCodeCRC32(folderName, true));
+						System.out.println("hash off fileName " + fileName + " nameHash " + nameHash + " crc32  "
+											+ HashCode.hashCodeCRC32(fileName, false));
 					}
 				} else {
 					folder = folderHashToFolderMap.get(dirHash);
@@ -481,7 +482,7 @@ public class ArchiveFileBtdx extends ArchiveFile {
 					entry = new ArchiveEntryGNFDX10(this, dirHash, nameHash);
 				}
 				entry.setCompressionType(compressionType);
-				
+
 				//byte unk1 = buffer[12];				
 				entry.numChunks = buffer[13] & 0xff; //
 				entry.chunkHdrLen = getShort(buffer, 14); // - size of one chunk header
@@ -529,6 +530,7 @@ public class ArchiveFileBtdx extends ArchiveFile {
 			hasDDSFiles = hasDDSFiles || extension.startsWith("dds");
 			hasKTXFiles = hasKTXFiles || extension.startsWith("ktx");
 			hasMaterials = hasMaterials || extension.startsWith("bgsm") || extension.startsWith("bgem");
+			hasMaterialCDB = hasMaterialCDB || extension.startsWith("cdb");
 		}
 	}
 
@@ -560,6 +562,11 @@ public class ArchiveFileBtdx extends ArchiveFile {
 	@Override
 	public boolean hasMaterials() {
 		return hasMaterials;
+	}
+		
+	@Override
+	public boolean hasMaterialCDB() {
+		return hasMaterialCDB;
 	}
 
 }

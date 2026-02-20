@@ -205,6 +205,11 @@ public abstract class ArchiveFile {
 	public abstract boolean hasSounds();
 
 	public abstract boolean hasMaterials();
+	
+	public boolean hasMaterialCDB() {
+		// only for Btdx for starfield for materials
+		return false;
+	}
 
 	protected static int getShort(byte buffer[], int offset) {
 		return buffer[offset + 0] & 0xff | (buffer[offset + 1] & 0xff) << 8;
@@ -230,5 +235,7 @@ public abstract class ArchiveFile {
 				| (buffer[offset + 5] & 255L) << 40 | (buffer[offset + 6] & 255L) << 48
 				| (buffer[offset + 7] & 255L) << 56;
 	}
+
+	
 
 }
