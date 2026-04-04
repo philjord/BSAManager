@@ -35,6 +35,7 @@ public class ArchiveEntryDX10 extends ArchiveEntry {
 
 		public int	align;			// 14 
 
+		@Override
 		public String toString() {
 			return "DX10Chunk"	+ " off:" + offset + " packed:" + packedLen + " unpacked:" + unpackedLen + "startMip:"
 					+ startMip + "endMip:" + endMip + "align:" + align;
@@ -51,9 +52,11 @@ public class ArchiveEntryDX10 extends ArchiveEntry {
 	 * @param folderName
 	 * @param fileName
 	 */
-	public ArchiveEntryDX10(ArchiveFile archiveFile, String folderName, String fileName) {
-		super(archiveFile, folderName, fileName);
+	public ArchiveEntryDX10(ArchiveFile archiveFile, String folderName, String fileName, HashFormat hf) {
+		super(archiveFile, folderName, fileName, hf);
 	}
 	//https://github.com/jonwd7/nifskope/commit/2680d9fc33aba8aa300faa850d65b0a3b36eca4a
+	
+	 
 
 }

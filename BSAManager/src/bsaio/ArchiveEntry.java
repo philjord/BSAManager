@@ -2,7 +2,7 @@ package bsaio;
 
 public class ArchiveEntry implements Comparable<ArchiveEntry> {
 
-	private long	folderHashCode;
+	protected long	folderHashCode;
 
 	protected long	fileHashCode;
 
@@ -17,6 +17,11 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 	public enum CompressionFormat {
 		ZIP, LZ4
 	};
+	
+	public enum HashFormat {
+		OLD, CRC32
+	};
+ 
 
 	private CompressionFormat compressionType = CompressionFormat.ZIP;
 
@@ -26,7 +31,7 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 	 * @param folderName
 	 * @param fileName
 	 */
-	public ArchiveEntry(ArchiveFile archiveFile, String folderName, String fileName) {
+	public ArchiveEntry(ArchiveFile archiveFile, String folderName, String fileName, HashFormat hf) {
 		if (folderName == null || fileName == null) {
 			throw new IllegalArgumentException("Folder name or file name is null " + folderName + " : " + fileName);
 		} else if (folderName.length() > 254) {
@@ -34,22 +39,44 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 		} else if (fileName.length() > 254) {
 			throw new IllegalArgumentException("File name is longer than 254 characters " + fileName);
 		}
-
-		folderHashCode = HashCode.hashCode(folderName, true);
-		fileHashCode = HashCode.hashCode(fileName, false);
+		
+		setFolderHash(folderName, hf);
+		setFileHash(fileName, hf);
 	}
 
+	
 	public ArchiveEntry(ArchiveFile archiveFile, long folderHashCode, long fileHashCode) {
 		this.folderHashCode = folderHashCode;
 		this.fileHashCode = fileHashCode;
 	}
+	
+	/**
+	 * This allows Starfield archive to use hasCodeRCR32 instead of the older hash code
+	 * @param hf 
+	 */
+	protected void setFolderHash(String folderName, HashFormat hf) {
+		if (hf == HashFormat.OLD)
+			folderHashCode = HashCode.hashCode(folderName, true);
+		else
+			folderHashCode = HashCode.hashCodeCRC32(folderName, true);
+	}
+	/**
+	 * This allows Starfield archive to use hasCodeRCR32 instead of the older hash code
+	 * @param hf 
+	 */
+	protected void setFileHash(String fileName, HashFormat hf) {
+		if (hf == HashFormat.OLD)
+			fileHashCode = HashCode.hashCode(fileName, false);
+		else
+			fileHashCode = HashCode.hashCodeCRC32(fileName, false);
+	}
 
-	public void setFolderName(String folderName) {
+	public void setFolderName(String folderName, HashFormat hf) {
 		if (folderName.length() > 254) {
 			throw new IllegalArgumentException("Folder name is longer than 254 characters " + folderName);
 		}
 
-		folderHashCode = HashCode.hashCode(folderName, true);
+		setFolderHash(folderName, hf);
 	}
 
 	public long getFolderHashCode() {

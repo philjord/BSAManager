@@ -11,6 +11,7 @@ import com.frostwire.util.LongSparseArray;
 
 import bsaio.ArchiveEntry;
 import bsaio.ArchiveEntry.CompressionFormat;
+import bsaio.ArchiveEntry.HashFormat;
 import bsaio.ArchiveFile;
 import bsaio.ArchiveInputStream;
 import bsaio.DBException;
@@ -344,7 +345,7 @@ public class ArchiveFileBtdx extends ArchiveFile {
 
 				ArchiveEntry entry;
 				if (this.isForDisplay) {
-					entry = new DisplayableArchiveEntry(this, folderName, fileName);
+					entry = new DisplayableArchiveEntry(this, folderName, fileName, HashFormat.CRC32);
 					// this hashing is new so keep an eye on it
 					if (dirHash != HashCode.hashCodeCRC32(folderName, true)
 						|| nameHash != HashCode.hashCodeCRC32(fileName, false)) {
@@ -396,7 +397,7 @@ public class ArchiveFileBtdx extends ArchiveFile {
 
 				ArchiveEntryDX10 entry;
 				if (this.isForDisplay) {
-					entry = new DisplayableArchiveEntryDX10(this, folderName, fileName);
+					entry = new DisplayableArchiveEntryDX10(this, folderName, fileName, HashFormat.CRC32);
 					// this hashing is new so keep an eye on it
 					if (dirHash != HashCode.hashCodeCRC32(folderName, true)
 						|| nameHash != HashCode.hashCodeCRC32(fileName, false)) {
@@ -462,7 +463,7 @@ public class ArchiveFileBtdx extends ArchiveFile {
 
 				ArchiveEntryGNFDX10 entry;
 				if (this.isForDisplay) {
-					entry = new DisplayableArchiveEntryGNFDX10(this, folderName, fileName);
+					entry = new DisplayableArchiveEntryGNFDX10(this, folderName, fileName, HashFormat.CRC32);
 					// this hashing is new so keep an eye on it
 					if (dirHash != HashCode.hashCodeCRC32(folderName, true)
 						|| nameHash != HashCode.hashCodeCRC32(fileName, false)) {

@@ -1,6 +1,7 @@
 package bsaio.displayables;
 
 import bsaio.ArchiveFile;
+import bsaio.ArchiveEntry.HashFormat;
 
 public interface Displayable
 {
@@ -13,6 +14,6 @@ public interface Displayable
 	
 	ArchiveFile getArchiveFile();
 
-	void setFileName(String fileName);
+	void setFileName(String fileName, HashFormat hf); 
 
 }

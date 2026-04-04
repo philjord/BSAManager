@@ -104,6 +104,7 @@ public class HashCode implements Comparable<HashCode> {
 				hash |= 0x80000000L;
 			
 			
+								
 			/* from DDSToKTXbsaConverter
 			 * int sep = fileName.lastIndexOf('.');
 			if (sep >= 0) {
@@ -156,11 +157,15 @@ public class HashCode implements Comparable<HashCode> {
 				ext = hashName.substring(sep + 1);// don't include '.'
 			}
 		}
+				 
 
 		long h = 0;
-		byte[] buffer = PrimitiveBytes.getBytesFast(name);
-		for (byte c : buffer) {
-			h = (h >> 8) ^ crc32Table_EDB88320[(int)((h ^ (c)) & 0xFF)];
+		//sometime we see filename like .ffxanim
+		if (name != null) {
+			byte[] buffer = PrimitiveBytes.getBytesFast(name);
+			for (byte c : buffer) {
+				h = (h >> 8) ^ crc32Table_EDB88320[(int)((h ^ (c)) & 0xFF)];
+			}
 		}
 
 		//It seems extensions are ignored in this hashing function

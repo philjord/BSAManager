@@ -1,7 +1,6 @@
 package bsaio.displayables;
 
 import bsaio.ArchiveFile;
-import bsaio.HashCode;
 import bsaio.btdx.ArchiveEntryDX10;
 
 public class DisplayableArchiveEntryDX10 extends ArchiveEntryDX10 implements Displayable {
@@ -13,8 +12,8 @@ public class DisplayableArchiveEntryDX10 extends ArchiveEntryDX10 implements Dis
 
 	private String		entryName;
 
-	public DisplayableArchiveEntryDX10(ArchiveFile archiveFile, String folderName, String fileName) {
-		super(archiveFile, folderName, fileName);
+	public DisplayableArchiveEntryDX10(ArchiveFile archiveFile, String folderName, String fileName, HashFormat hf) {
+		super(archiveFile, folderName, fileName, hf);
 		this.archiveFile = archiveFile;
 		this.folderName = folderName;
 		this.fileName = fileName;
@@ -32,8 +31,8 @@ public class DisplayableArchiveEntryDX10 extends ArchiveEntryDX10 implements Dis
 	}
 
 	@Override
-	public void setFolderName(String folderName) {
-		super.setFolderName(folderName);
+	public void setFolderName(String folderName, HashFormat hf) {
+		super.setFolderName(folderName, hf);
 		this.folderName = folderName;
 		entryName = (new StringBuilder()).append(folderName).append("\\").append(fileName).toString();
 	}
@@ -42,12 +41,13 @@ public class DisplayableArchiveEntryDX10 extends ArchiveEntryDX10 implements Dis
 	public String getFileName() {
 		return fileName;
 	}
+	
 	@Override
-	public void setFileName(String fileName) {
+	public void setFileName(String fileName, HashFormat hf) {
 		if (fileName.length() > 254) {
 			throw new IllegalArgumentException("File name is longer than 254 characters " + fileName);
 		}
-		fileHashCode = HashCode.hashCode(fileName, false);
+		setFileHash(fileName, hf);
 		this.fileName = fileName;
 		entryName = (new StringBuilder()).append(folderName).append("\\").append(fileName).toString();
 

@@ -2,22 +2,23 @@ package bsaio.displayables;
 
 import bsaio.ArchiveEntry;
 import bsaio.ArchiveFile;
-import bsaio.HashCode;
 
-public class DisplayableArchiveEntry extends ArchiveEntry implements Displayable
-{
-	
+public class DisplayableArchiveEntry extends ArchiveEntry implements Displayable {
+
 	protected String	fileName;
+
+	private ArchiveFile	archiveFile;
+
+	private String		folderName;
+
+	private String		entryName;
 	
-	private ArchiveFile archiveFile;
+	public DisplayableArchiveEntry(ArchiveFile archiveFile, String folderName, String fileName) {
+		this(archiveFile, folderName, fileName, HashFormat.OLD);		 
+	}
 
-	private String folderName;
-
-	private String entryName;
-
-	public DisplayableArchiveEntry(ArchiveFile archiveFile, String folderName, String fileName)
-	{
-		super(archiveFile, folderName, fileName);
+	public DisplayableArchiveEntry(ArchiveFile archiveFile, String folderName, String fileName, HashFormat hf) {
+		super(archiveFile, folderName, fileName, hf);
 		this.archiveFile = archiveFile;
 		this.folderName = folderName;
 		this.fileName = fileName;
@@ -25,21 +26,18 @@ public class DisplayableArchiveEntry extends ArchiveEntry implements Displayable
 	}
 
 	@Override
-	public String getName()
-	{
+	public String getName() {
 		return entryName;
 	}
 
 	@Override
-	public String getFolderName()
-	{
+	public String getFolderName() {
 		return folderName;
 	}
 
 	@Override
-	public void setFolderName(String folderName)
-	{
-		super.setFolderName(folderName);
+	public void setFolderName(String folderName, HashFormat hf) {
+		super.setFolderName(folderName, hf);
 		this.folderName = folderName;
 		entryName = (new StringBuilder()).append(folderName).append("\\").append(fileName).toString();
 	}
@@ -50,26 +48,23 @@ public class DisplayableArchiveEntry extends ArchiveEntry implements Displayable
 	}
 
 	@Override
-	public void setFileName(String fileName)
-	{
+	public void setFileName(String fileName, HashFormat hf) {
 		if (fileName.length() > 254) {
 			throw new IllegalArgumentException("File name is longer than 254 characters " + fileName);
 		}
-		fileHashCode = HashCode.hashCode(fileName, false);
+		setFileHash(fileName, hf);
 		this.fileName = fileName;
 		entryName = (new StringBuilder()).append(folderName).append("\\").append(fileName).toString();
 
 	}
 
 	@Override
-	public ArchiveFile getArchiveFile()
-	{
+	public ArchiveFile getArchiveFile() {
 		return archiveFile;
 	}
 
 	@Override
-	public String toString()
-	{
+	public String toString() {
 		return entryName;
 	}
 

@@ -14,13 +14,13 @@ import com.github.pbbl.heap.ByteBufferPool;
 import tools.io.FileChannelRAF;
 
 public class ArchiveInputStream extends FastByteArrayInputStream {
-	
+
 	private static ByteBufferPool pool = new ByteBufferPool();
-	
+
 	public ArchiveInputStream(FileChannelRAF in, ArchiveEntry entry) throws IOException {
 		super(new byte[0]);//reset below once data is available
 		FileChannel ch = in.getChannel();
-		
+
 		// not sure why this is bad, something weird with defaultcompressed flag the the archive load up
 		if (entry.getFileLength() == 0)
 			entry.setFileLength(entry.getCompressedLength());
@@ -71,7 +71,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 		// not sure why this is bad, something weird with defaultcompressed flag the the archive load up
 		if (entry.getFileLength() == 0)
 			entry.setFileLength(entry.getCompressedLength());
-		
+
 		// biggest file seen nif file at about 12 meg, all great sizes are a bad entry
 		// except the 95 mb (uncompressed) cdb file inside the materials ba2 for starfield
 		if ((entry.getFileLength() < 0 || entry.getFileLength() > 16000000) && entry.getFileHashCode() != 3502042577L) {
@@ -86,14 +86,14 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 		boolean isCompressed = entry.isCompressed();
 		if (isCompressed && entry.getFileLength() > 0) {
 			dataBufferOut = new byte[entry.getFileLength()];
-			
+
 			// entry size for buffer
 			int compressedLength = entry.getCompressedLength();
 			ByteBuffer dataBufferInBB = pool.take(compressedLength);
 			//byte[] dataBufferIn = new byte[compressedLength];
 
 			//ch.read(ByteBuffer.wrap(dataBufferIn), entry.getFileOffset());
-			ch.read(dataBufferInBB, entry.getFileOffset());					
+			ch.read(dataBufferInBB, entry.getFileOffset());
 
 			Inflater inflater = new Inflater();
 			//inflater.setInput(dataBufferIn);
@@ -107,16 +107,16 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 			}
 			inflater.end();
 			pool.give(dataBufferInBB);
- 
+
 			// someone is calling no direct, but I think I can't see the advantage, if it ever touches the GPU API it must be direct
 			//if (!allocateDirect) {
 			//	return ByteBuffer.wrap(dataBufferOut);
 			//} else {
-				ByteBuffer bb = ByteBuffer.allocateDirect(dataBufferOut.length);
-				bb.order(ByteOrder.nativeOrder());
-				bb.put(dataBufferOut);
-				bb.position(0);
-				return bb;
+			ByteBuffer bb = ByteBuffer.allocateDirect(dataBufferOut.length);
+			bb.order(ByteOrder.nativeOrder());
+			bb.put(dataBufferOut);
+			bb.position(0);
+			return bb;
 			//}
 		} else {
 			//ByteBuffer bb = allocateDirect ? ByteBuffer.allocateDirect(entry.getFileLength()) : ByteBuffer.allocate(entry.getFileLength());
@@ -125,6 +125,6 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 			bb.position(0);
 			return bb;
 		}
-	
+
 	}
 }
