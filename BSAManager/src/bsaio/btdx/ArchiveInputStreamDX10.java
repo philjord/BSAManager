@@ -55,89 +55,232 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 		insertHeader(tex, dst);
 
 		//FIXME I need ot be able to send GNFDX10 entries to something like this, but not
-		//FIXME:!!! no check for isCompressed!!	
-		if (entry.getCompressionType() == ArchiveEntry.CompressionFormat.ZIP) {
+		if (entry.isCompressed()) {
+			if (entry.getCompressionType() == ArchiveEntry.CompressionFormat.ZIP) {
 
-			// Java straight inflate load near =13sec
-			Inflater inflater = new Inflater();
-			// each chunk can have any number of mips in it, so later one could be bigger than earlier!
-			byte[] dstBuff = new byte[tex.chunks[0].unpackedLen];
-			byte[] srcBuf = new byte[tex.chunks[0].packedLen];
-			for (int j = 0; j < tex.chunks.length; j++) {
-				DX10Chunk chunk = tex.chunks[j];
+				// Java straight inflate load near =13sec
+				Inflater inflater = new Inflater();
+				// each chunk can have any number of mips in it, so later one could be bigger than earlier!
+				byte[] dstBuff = new byte[tex.chunks[0].unpackedLen];
+				byte[] srcBuf = new byte[tex.chunks[0].packedLen];
+				for (int j = 0; j < tex.chunks.length; j++) {
+					DX10Chunk chunk = tex.chunks[j];
 
-				if (chunk.packedLen > srcBuf.length)
-					srcBuf = new byte[chunk.packedLen];
+					if (chunk.packedLen > srcBuf.length)
+						srcBuf = new byte[chunk.packedLen];
 
-				if (chunk.unpackedLen > dstBuff.length)
-					dstBuff = new byte[chunk.unpackedLen];
+					if (chunk.unpackedLen > dstBuff.length)
+						dstBuff = new byte[chunk.unpackedLen];
 
-				int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
+					int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
 
-				if (c < 0)
-					throw new EOFException("Unexpected end of stream while inflating file");
+					if (c < 0)
+						throw new EOFException("Unexpected end of stream while inflating file");
 
-				inflater.reset();
-				inflater.setInput(srcBuf, 0, chunk.packedLen);
+					inflater.reset();
+					inflater.setInput(srcBuf, 0, chunk.packedLen);
 
-				try {
-					int count = inflater.inflate(dstBuff);
-					if (count != chunk.unpackedLen)
-						System.err.println("ZIP Inflate count issue! " + entry);
-				} catch (DataFormatException e) {
-					e.printStackTrace();
+					try {
+						int count = inflater.inflate(dstBuff);
+						if (count != chunk.unpackedLen)
+							System.err.println("ZIP Inflate count issue! " + entry);
+					} catch (DataFormatException e) {
+						e.printStackTrace();
+					}
+
+					dst.put(dstBuff, 0, chunk.unpackedLen);
+				}
+			} else if (entry.getCompressionType() == ArchiveEntry.CompressionFormat.LZ4) {
+
+				//https://github.com/yawkat/lz4-java
+				//	<dependency>
+				//    <groupId>at.yawk.lz4</groupId>
+				//    <artifactId>lz4-java</artifactId>
+				//		<version>1.10.2</version>
+				//</dependency>
+
+				byte[] dstBuff = new byte[tex.chunks[0].unpackedLen];
+				byte[] srcBuf = new byte[tex.chunks[0].packedLen];
+				for (int j = 0; j < tex.chunks.length; j++) {
+					DX10Chunk chunk = tex.chunks[j];
+
+					if (chunk.packedLen > srcBuf.length)
+						srcBuf = new byte[chunk.packedLen];
+
+					if (chunk.unpackedLen > dstBuff.length)
+						dstBuff = new byte[chunk.unpackedLen];
+
+					int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
+
+					if (c < 0)
+						throw new EOFException("Unexpected end of stream while inflating file");
+
+					int count = decompressor.decompress(srcBuf, 0, dstBuff, 0, chunk.unpackedLen);
+					if (count != chunk.unpackedLen) {
+						//seems super common and doesn't seem to cause trouble
+						//System.err.println("LZ4 Inflate count issue! "	+ entry + " chunk.unpackedLen= " + chunk.unpackedLen
+						//					+ " count=" + count);
+					}
+
+					dst.put(dstBuff, 0, chunk.unpackedLen);
+
 				}
 
-				dst.put(dstBuff, 0, chunk.unpackedLen);
+			} else {
+				new Throwable("Unknown ArchiveEntry compressionType! " + entry.getCompressionType()).printStackTrace();
 			}
-		} else if (entry.getCompressionType() == ArchiveEntry.CompressionFormat.LZ4) {
-
-			//https://github.com/yawkat/lz4-java
-			//	<dependency>
-			//    <groupId>at.yawk.lz4</groupId>
-			//    <artifactId>lz4-java</artifactId>
-			//		<version>1.10.2</version>
-			//</dependency>
-
-
-
-			byte[] dstBuff = new byte[tex.chunks[0].unpackedLen];
-			byte[] srcBuf = new byte[tex.chunks[0].packedLen];
-			for (int j = 0; j < tex.chunks.length; j++) {
-				DX10Chunk chunk = tex.chunks[j];
-
-				if (chunk.packedLen > srcBuf.length)
-					srcBuf = new byte[chunk.packedLen];
-
-				if (chunk.unpackedLen > dstBuff.length)
-					dstBuff = new byte[chunk.unpackedLen];
-
-				int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
-
-				if (c < 0)
-					throw new EOFException("Unexpected end of stream while inflating file");
-
-				int count = decompressor.decompress(srcBuf, 0, dstBuff, 0, chunk.unpackedLen);
-				if (count != chunk.unpackedLen) {
-					//seems super common and doesn't seem to cause trouble
-					//System.err.println("LZ4 Inflate count issue! "	+ entry + " chunk.unpackedLen= " + chunk.unpackedLen
-					//					+ " count=" + count);
-				}
-
-				dst.put(dstBuff, 0, chunk.unpackedLen);
-
-			}
-
 		} else {
-			new Throwable("Unknown ArchiveEntry compressionType! " + entry.getCompressionType()).printStackTrace();
-		}
+			byte[] srcBuf = new byte[tex.chunks[0].packedLen];
+			for (int j = 0; j < tex.chunks.length; j++) {
+				DX10Chunk chunk = tex.chunks[j];
 
+				if (chunk.packedLen > srcBuf.length)
+					srcBuf = new byte[chunk.packedLen];
+
+				int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
+				if (c < 0)
+					throw new EOFException("Unexpected end of stream while inflating file");
+
+				dst.put(srcBuf, 0, chunk.packedLen);
+			}
+		}
 		this.buf = dst.array();
 		this.pos = 0;
 		this.count = buf.length;
 
 	}
 
+	
+
+	/**
+	 * Be careful see ArchiveFile for warning
+	 * @param in
+	 * @param entry
+	 * @return
+	 * @throws IOException
+	 */
+	public static ByteBuffer getByteBuffer(FileChannelRAF in, ArchiveEntry entry, boolean allocateDirect)
+			throws IOException {
+		
+		if(decompressor == null) {
+			factory = LZ4Factory.fastestInstance();
+			decompressor = factory.fastDecompressor();
+		}
+		
+		FileChannel ch = in.getChannel();
+		ArchiveEntryDX10 tex = (ArchiveEntryDX10)entry;
+		int requiredBufferSize = 32 * 4;
+		for (int j = 0; j < tex.chunks.length; j++) {
+			requiredBufferSize += tex.chunks[j].unpackedLen;
+		}
+		// collect up all the chunks
+		ByteBuffer dst = null;
+
+		if (!allocateDirect) {
+			dst = ByteBuffer.allocate(requiredBufferSize);
+		} else {
+			dst = ByteBuffer.allocateDirect(requiredBufferSize);
+		}
+		dst.order(ByteOrder.LITTLE_ENDIAN);
+
+		insertHeader(tex, dst);
+
+		//FIXME I need ot be able to sen dGNFDX10 entries to somethign like this, but not
+		if (entry.isCompressed()) {
+			if (entry.getCompressionType() == ArchiveEntry.CompressionFormat.ZIP) {
+
+				// Java straight inflate load near =13sec
+				Inflater inflater = new Inflater();
+				// each chunk can have any number of mips in it, so later one could be bigger than earlier!
+				byte[] dstBuff = new byte[tex.chunks[0].unpackedLen];
+				byte[] srcBuf = new byte[tex.chunks[0].packedLen];
+				for (int j = 0; j < tex.chunks.length; j++) {
+					DX10Chunk chunk = tex.chunks[j];
+
+					if (chunk.packedLen > srcBuf.length)
+						srcBuf = new byte[chunk.packedLen];
+
+					if (chunk.unpackedLen > dstBuff.length)
+						dstBuff = new byte[chunk.unpackedLen];
+
+					//byte[] srcBuf = new byte[chunk.packedLen];
+					int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
+					if (c < 0)
+						throw new EOFException("Unexpected end of stream while inflating file");
+
+					inflater.reset();
+					inflater.setInput(srcBuf, 0, chunk.packedLen);
+
+					try {
+
+						int count = inflater.inflate(dstBuff);
+						if (count != chunk.unpackedLen)
+							System.err.println("ZIP Inflate count issue! ArchiveInputStreamDX10 ");
+
+					} catch (DataFormatException e) {
+						e.printStackTrace();
+					}
+
+					dst.put(dstBuff, 0, chunk.unpackedLen);
+				}
+			} else if (entry.getCompressionType() == ArchiveEntry.CompressionFormat.LZ4) {
+
+				//https://github.com/yawkat/lz4-java
+				//	<dependency>
+				//    <groupId>at.yawk.lz4</groupId>
+				//    <artifactId>lz4-java</artifactId>
+				//		<version>1.10.2</version>
+				//</dependency>
+
+				byte[] dstBuff = new byte[tex.chunks[0].unpackedLen];
+				byte[] srcBuf = new byte[tex.chunks[0].packedLen];
+				for (int j = 0; j < tex.chunks.length; j++) {
+					DX10Chunk chunk = tex.chunks[j];
+
+					if (chunk.packedLen > srcBuf.length)
+						srcBuf = new byte[chunk.packedLen];
+
+					if (chunk.unpackedLen > dstBuff.length)
+						dstBuff = new byte[chunk.unpackedLen];
+
+					int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
+
+					if (c < 0)
+						throw new EOFException("Unexpected end of stream while inflating file");
+
+					int count = decompressor.decompress(srcBuf, 0, dstBuff, 0, chunk.unpackedLen);
+					if (count != chunk.unpackedLen) {
+						//seems super common and doesn't seem to cause trouble
+						//System.err.println("LZ4 Inflate count issue! "	+ entry + " chunk.unpackedLen= " + chunk.unpackedLen
+						//					+ " count=" + count);
+					}
+
+					dst.put(dstBuff, 0, chunk.unpackedLen);
+				}
+
+			} else {
+				new Throwable("Unknown ArchiveEntry compressionType! " + entry.getCompressionType()).printStackTrace();
+			}
+		} else {
+			byte[] srcBuf = new byte[tex.chunks[0].packedLen];
+			for (int j = 0; j < tex.chunks.length; j++) {
+				DX10Chunk chunk = tex.chunks[j];
+
+				if (chunk.packedLen > srcBuf.length)
+					srcBuf = new byte[chunk.packedLen];
+
+				int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
+				if (c < 0)
+					throw new EOFException("Unexpected end of stream while inflating file");
+
+				dst.put(srcBuf, 0, chunk.packedLen);
+			}
+		}
+		dst.position(0);
+		return dst;
+
+	}
+	
 	private static void insertHeader(ArchiveEntryDX10 tex, ByteBuffer dst) {
 		DDS_HEADER ddsHeader = new DDS_HEADER();
 		DDS_HEADER_DXT10 dx10Header = new DDS_HEADER_DXT10();
@@ -196,6 +339,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 				break;
 			case DDS_HEADER.DXGI_FORMAT_BC4_UNORM:
 				ddsHeader.dwHeaderFlags = 0xA1007;
+				ddsHeader.ddspf = ddsHeader.DDSPF_ATI1;
 				//ddsHeader.PixelFormat.dwFlags = DDS.DDS_FOURCC;
 				//ddsHeader.PixelFormat.dwFourCC = DDS.MAKEFOURCC('B', 'C', '4', 'U');
 				ddsHeader.dwPitchOrLinearSize = ((tex.width / 4) * (tex.height / 4) * 8);
@@ -345,119 +489,5 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 			dst.putInt(dx10Header.arraySize);
 			dst.putInt(dx10Header.miscFlags2);
 		}
-	}
-
-	/**
-	 * Be careful see ArchiveFile for warning
-	 * @param in
-	 * @param entry
-	 * @return
-	 * @throws IOException
-	 */
-	public static ByteBuffer getByteBuffer(FileChannelRAF in, ArchiveEntry entry, boolean allocateDirect)
-			throws IOException {
-		
-		if(decompressor == null) {
-			factory = LZ4Factory.fastestInstance();
-			decompressor = factory.fastDecompressor();
-		}
-		
-		FileChannel ch = in.getChannel();
-		ArchiveEntryDX10 tex = (ArchiveEntryDX10)entry;
-		int requiredBufferSize = 32 * 4;
-		for (int j = 0; j < tex.chunks.length; j++) {
-			requiredBufferSize += tex.chunks[j].unpackedLen;
-		}
-		// collect up all the chunks
-		ByteBuffer dst = null;
-
-		if (!allocateDirect) {
-			dst = ByteBuffer.allocate(requiredBufferSize);
-		} else {
-			dst = ByteBuffer.allocateDirect(requiredBufferSize);
-		}
-		dst.order(ByteOrder.LITTLE_ENDIAN);
-
-		insertHeader(tex, dst);
-
-		//FIXME I need ot be able to sen dGNFDX10 entries to somethign like this, but not
-		//FIXME:!!! no check for isCompressed!!	
-		if (entry.getCompressionType() == ArchiveEntry.CompressionFormat.ZIP) {
-
-			// Java straight inflate load near =13sec
-			Inflater inflater = new Inflater();
-			// each chunk can have any number of mips in it, so later one could be bigger than earlier!
-			byte[] dstBuff = new byte[tex.chunks[0].unpackedLen];
-			byte[] srcBuf = new byte[tex.chunks[0].packedLen];
-			for (int j = 0; j < tex.chunks.length; j++) {
-				DX10Chunk chunk = tex.chunks[j];
-
-				if (chunk.packedLen > srcBuf.length)
-					srcBuf = new byte[chunk.packedLen];
-
-				if (chunk.unpackedLen > dstBuff.length)
-					dstBuff = new byte[chunk.unpackedLen];
-
-				//byte[] srcBuf = new byte[chunk.packedLen];
-				int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
-				if (c < 0)
-					throw new EOFException("Unexpected end of stream while inflating file");
-
-				inflater.reset();
-				inflater.setInput(srcBuf, 0, chunk.packedLen);
-
-				try {
-
-					int count = inflater.inflate(dstBuff);
-					if (count != chunk.unpackedLen)
-						System.err.println("ZIP Inflate count issue! ArchiveInputStreamDX10 ");
-
-				} catch (DataFormatException e) {
-					e.printStackTrace();
-				}
-
-				dst.put(dstBuff, 0, chunk.unpackedLen);
-			}
-		} else if (entry.getCompressionType() == ArchiveEntry.CompressionFormat.LZ4) {
-
-			//https://github.com/yawkat/lz4-java
-			//	<dependency>
-			//    <groupId>at.yawk.lz4</groupId>
-			//    <artifactId>lz4-java</artifactId>
-			//		<version>1.10.2</version>
-			//</dependency>
-
-			byte[] dstBuff = new byte[tex.chunks[0].unpackedLen];
-			byte[] srcBuf = new byte[tex.chunks[0].packedLen];
-			for (int j = 0; j < tex.chunks.length; j++) {
-				DX10Chunk chunk = tex.chunks[j];
-
-				if (chunk.packedLen > srcBuf.length)
-					srcBuf = new byte[chunk.packedLen];
-
-				if (chunk.unpackedLen > dstBuff.length)
-					dstBuff = new byte[chunk.unpackedLen];
-
-				int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
-
-				if (c < 0)
-					throw new EOFException("Unexpected end of stream while inflating file");
-
-				int count = decompressor.decompress(srcBuf, 0, dstBuff, 0, chunk.unpackedLen);
-				if (count != chunk.unpackedLen) {
-					//seems super common and doesn't seem to cause trouble
-					//System.err.println("LZ4 Inflate count issue! "	+ entry + " chunk.unpackedLen= " + chunk.unpackedLen
-					//					+ " count=" + count);
-				}
-
-				dst.put(dstBuff, 0, chunk.unpackedLen);
-			}
-
-		} else {
-			new Throwable("Unknown ArchiveEntry compressionType! " + entry.getCompressionType()).printStackTrace();
-		}
-		dst.position(0);
-		return dst;
-
 	}
 }
