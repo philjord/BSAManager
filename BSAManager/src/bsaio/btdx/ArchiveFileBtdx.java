@@ -331,7 +331,7 @@ public class ArchiveFileBtdx extends ArchiveFile {
 					folderHashToFolderMap.put(folderHash, folder);
 				}
 
-				fileName = fullFileName.substring(pathSep + 1).trim();
+				fileName = fullFileName.substring(pathSep + 1); //NOTE no trim! sometimes leading space in name
 			}
 
 			long nameHash = -1;
@@ -347,12 +347,13 @@ public class ArchiveFileBtdx extends ArchiveFile {
 				if (this.isForDisplay) {
 					entry = new DisplayableArchiveEntry(this, folderName, fileName, HashFormat.CRC32);
 					// this hashing is new so keep an eye on it
-					if (dirHash != HashCode.hashCodeCRC32(folderName, true)
-						|| nameHash != HashCode.hashCodeCRC32(fileName, false)) {
-						System.out.println("hash off folderName "	+ folderName + " dirHash " + dirHash + " crc32  "
-											+ HashCode.hashCodeCRC32(folderName, true));
-						System.out.println("hash off fileName " + fileName + " nameHash " + nameHash + " crc32  "
-											+ HashCode.hashCodeCRC32(fileName, false));
+					if (dirHash != HashCode.hashCodeCRC32(folderName, true)) {
+						System.out.println("hash incorrect dir " + folderName + " hash in archive " + dirHash + ", but crc32  "
+								+ HashCode.hashCodeCRC32(folderName, true));
+					}
+					if( nameHash != HashCode.hashCodeCRC32(fileName, false)) {						
+						System.out.println("hash incorrect fileName " + fileName + " hash in archive " + nameHash + ", but crc32  "
+											+ HashCode.hashCodeCRC32(fileName, false) + " fullfilename is ["+fileNames[i]+"]");
 					}
 				} else {
 
@@ -399,12 +400,13 @@ public class ArchiveFileBtdx extends ArchiveFile {
 				if (this.isForDisplay) {
 					entry = new DisplayableArchiveEntryDX10(this, folderName, fileName, HashFormat.CRC32);
 					// this hashing is new so keep an eye on it
-					if (dirHash != HashCode.hashCodeCRC32(folderName, true)
-						|| nameHash != HashCode.hashCodeCRC32(fileName, false)) {
-						System.out.println("hash off folderName "	+ folderName + " dirHash " + dirHash + " crc32  "
-											+ HashCode.hashCodeCRC32(folderName, true));
-						System.out.println("hash off fileName " + fileName + " nameHash " + nameHash + " crc32  "
-											+ HashCode.hashCodeCRC32(fileName, false));
+					if (dirHash != HashCode.hashCodeCRC32(folderName, true)) {
+						System.out.println("hash incorrect dir " + folderName + " hash in archive " + dirHash + ", but crc32  "
+								+ HashCode.hashCodeCRC32(folderName, true));
+					}
+					if( nameHash != HashCode.hashCodeCRC32(fileName, false)) {						
+						System.out.println("hash incorrect fileName " + fileName + " hash in archive " + nameHash + ", but crc32  "
+											+ HashCode.hashCodeCRC32(fileName, false) + " fullfilename is ["+fileNames[i]+"]");
 					}
 				} else {
 					folder = folderHashToFolderMap.get(dirHash);
@@ -465,12 +467,13 @@ public class ArchiveFileBtdx extends ArchiveFile {
 				if (this.isForDisplay) {
 					entry = new DisplayableArchiveEntryGNFDX10(this, folderName, fileName, HashFormat.CRC32);
 					// this hashing is new so keep an eye on it
-					if (dirHash != HashCode.hashCodeCRC32(folderName, true)
-						|| nameHash != HashCode.hashCodeCRC32(fileName, false)) {
-						System.out.println("hash off folderName "	+ folderName + " dirHash " + dirHash + " crc32  "
-											+ HashCode.hashCodeCRC32(folderName, true));
-						System.out.println("hash off fileName " + fileName + " nameHash " + nameHash + " crc32  "
-											+ HashCode.hashCodeCRC32(fileName, false));
+					if (dirHash != HashCode.hashCodeCRC32(folderName, true)) {
+						System.out.println("hash incorrect dir " + folderName + " hash in archive " + dirHash + ", but crc32  "
+								+ HashCode.hashCodeCRC32(folderName, true));
+					}
+					if( nameHash != HashCode.hashCodeCRC32(fileName, false)) {						
+						System.out.println("hash incorrect fileName " + fileName + " hash in archive " + nameHash + ", but crc32  "
+											+ HashCode.hashCodeCRC32(fileName, false) + " fullfilename is ["+fileNames[i]+"]");
 					}
 				} else {
 					folder = folderHashToFolderMap.get(dirHash);
