@@ -29,7 +29,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 	public static LZ4FastDecompressor decompressor;
 
 	/**
-	 * Only ArchiveEntryDX10 accepted, note this is only for inputstream acces, bytebuffers are static adn don't insantiate  this class
+	 * Only ArchiveEntryDX10 accepted, note this is only for inputstream access, bytebuffers are static and don't insantiate  this class
 	 * @param in
 	 * @param entry
 	 * @throws IOException

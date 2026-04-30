@@ -12,7 +12,7 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 
 	private int		compressedLength;
 
-	private boolean	isCompressed;
+	private boolean	isCompressed = true;
 	
 	public enum CompressionFormat {
 		ZIP, LZ4
