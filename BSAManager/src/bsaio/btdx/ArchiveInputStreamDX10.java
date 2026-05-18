@@ -14,6 +14,7 @@ import bsaio.ArchiveEntry;
 import bsaio.btdx.ArchiveEntryDX10.DX10Chunk;
 import bsaio.btdx.DDS_HEADER.DDS_HEADER_DXT10;
 import bsaio.btdx.DDS_HEADER.DDS_PIXELFORMAT;
+import compressedtexture.DDSImage;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4FastDecompressor;
 import tools.io.FileChannelRAF;
@@ -46,6 +47,13 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 
 		ArchiveEntryDX10 tex = (ArchiveEntryDX10)entry;
 		int requiredBufferSize = 32 * 4;
+		
+		// DX10 inserts a bit more data
+		if (tex.format == DDS_HEADER.DXGI_FORMAT_BC7_UNORM ||
+				tex.format == DDS_HEADER.DXGI_FORMAT_BC7_UNORM_SRGB) {
+			requiredBufferSize += 24; //4 extra int and a long
+		}
+		
 		for (int j = 0; j < tex.chunks.length; j++) {
 			requiredBufferSize += tex.chunks[j].unpackedLen;
 		}
@@ -170,6 +178,15 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 		FileChannel ch = in.getChannel();
 		ArchiveEntryDX10 tex = (ArchiveEntryDX10)entry;
 		int requiredBufferSize = 32 * 4;
+		
+		
+		// DX10 inserts a bit more data
+		if (tex.format == DDS_HEADER.DXGI_FORMAT_BC7_UNORM ||
+				tex.format == DDS_HEADER.DXGI_FORMAT_BC7_UNORM_SRGB) {
+			requiredBufferSize += 24; //4 extra int and a long
+		}
+		
+		
 		for (int j = 0; j < tex.chunks.length; j++) {
 			requiredBufferSize += tex.chunks[j].unpackedLen;
 		}
@@ -183,9 +200,10 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 		}
 		dst.order(ByteOrder.LITTLE_ENDIAN);
 
+		
 		insertHeader(tex, dst);
 
-		//FIXME I need ot be able to sen dGNFDX10 entries to somethign like this, but not
+		//FIXME I need to be able to send GNFDX10 entries to something like this, but not
 		if (entry.isCompressed()) {
 			if (entry.getCompressionType() == ArchiveEntry.CompressionFormat.ZIP) {
 
@@ -236,26 +254,43 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 				byte[] srcBuf = new byte[tex.chunks[0].packedLen];
 				for (int j = 0; j < tex.chunks.length; j++) {
 					DX10Chunk chunk = tex.chunks[j];
+					// It turns out that isCompressed is in fact a combo of the zip type and each chunk itself!
+					if (chunk.packedLen > 0) {
 
-					if (chunk.packedLen > srcBuf.length)
-						srcBuf = new byte[chunk.packedLen];
+						if (chunk.packedLen > srcBuf.length)
+							srcBuf = new byte[chunk.packedLen];
 
-					if (chunk.unpackedLen > dstBuff.length)
-						dstBuff = new byte[chunk.unpackedLen];
+						if (chunk.unpackedLen > dstBuff.length)
+							dstBuff = new byte[chunk.unpackedLen];
 
-					int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
+						int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
 
-					if (c < 0)
-						throw new EOFException("Unexpected end of stream while inflating file");
+						if (c < 0)
+							throw new EOFException("Unexpected end of stream while inflating file");
 
-					int count = decompressor.decompress(srcBuf, 0, dstBuff, 0, chunk.unpackedLen);
-					if (count != chunk.unpackedLen) {
-						//seems super common and doesn't seem to cause trouble
-						//System.err.println("LZ4 Inflate count issue! "	+ entry + " chunk.unpackedLen= " + chunk.unpackedLen
-						//					+ " count=" + count);
+						try {
+							int count = decompressor.decompress(srcBuf, 0, dstBuff, 0, chunk.unpackedLen);
+
+							if (count != chunk.unpackedLen) {
+								//seems super common and doesn't seem to cause trouble
+								//System.err.println("LZ4 Inflate count issue! "	+ entry + " chunk.unpackedLen= " + chunk.unpackedLen
+								//					+ " count=" + count);
+							}
+						} catch (net.jpountz.lz4.LZ4Exception e) {
+							System.out.println("net.jpountz.lz4.LZ4Exception " + e.getMessage());
+						}
+
+						dst.put(dstBuff, 0, chunk.unpackedLen);
+					} else {
+						if (chunk.packedLen > srcBuf.length)
+							srcBuf = new byte[chunk.packedLen];
+
+						int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
+						if (c < 0)
+							throw new EOFException("Unexpected end of stream while reading file");
+
+						dst.put(srcBuf, 0, chunk.packedLen);
 					}
-
-					dst.put(dstBuff, 0, chunk.unpackedLen);
 				}
 
 			} else {
@@ -271,7 +306,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 
 				int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
 				if (c < 0)
-					throw new EOFException("Unexpected end of stream while inflating file");
+					throw new EOFException("Unexpected end of stream while reading file");
 
 				dst.put(srcBuf, 0, chunk.packedLen);
 			}
@@ -282,6 +317,72 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 	}
 	
 	private static void insertHeader(ArchiveEntryDX10 tex, ByteBuffer dst) {
+		
+		
+		//STF
+		//ArchiveFile:Starfield - Textures05.ba2/textures/effects/weather/cloudcards/clouds_directions.dds
+		//Pixel format: D3DFMT_DX10		Bad DXT format (for now) 808540228 GL=-1 
+		
+		// ArchiveFile:Starfield - Textures05.ba2/textures/cubemaps/blackcube.dds
+		//Unsupported DDS format 0 for file
+		//Unsupported DDS format 0 for file textures\cubemaps\cell_previewwindowcube.dds
+		//Unsupported DDS format 0 for file textures\effects\gradients\cloaksurface_ropacity.dds
+
+		//unhandled format 11 ArchiveFile:Starfield - Textures05.ba2/textures/effects/gradients/gasgiantcolor01_grad.dds
+		//class org.jogamp.java3d.compressedtexture.CompressedTextureLoader$DDS had a  IO problem with textures\effects\gradients\gasgiantcolor01_grad.dds : java.io.IOException: Incorrect magic number 0x0 (expected 0x20534444) or 0x5a485aa8) compressedtexture.DDSImage$Header.read(DDSImage.java:763)
+		
+		//unhandled format 95 ArchiveFile:Starfield - Textures05.ba2/textures/effects/luts/lgt_lut_hdr_int_crimsonoutpost_v01.dds
+		//class org.jogamp.java3d.compressedtexture.CompressedTextureLoader$DDS had a  IO problem with textures\effects\luts\lgt_lut_hdr_int_crimsonoutpost_v01.dds : java.io.IOException: Incorrect magic number 0x29000a1e (expected 0x20534444) or 0x5a485aa8) compressedtexture.DDSImage$Header.read(DDSImage.java:763)
+
+		
+		//FO76
+		//ArchiveFile:SeventySix - Textures02.ba2/textures/interface/loadingmenubackgrounds/ls_abandonedtruck.dds
+		//Pixel format: D3DFMT_DX10		DXGI_FORMAT_BC7_UNORM_SRGB=808540228
+		//ArchiveFile:SeventySix - Textures01.ba2/textures/interface/lockpicking/lockinterface01_d.dds
+		//Number of mip maps: 1		Pixel format: D3DFMT_DXT1
+		//ArchiveFile:SeventySix - Textures01.ba2/textures/dlc03/effects/gradients/wispysmokealphagrad.dds
+		//Number of mip maps: 6		Pixel format: D3DFMT_A8B8G8R8
+		
+		
+		//FO4		 
+		//ArchiveFile:Fallout4 - Textures6.ba2/textures/interface/loadingmenubg.dds
+		//DXGI_FORMAT_BC7_UNORM  = 808540228		dx10 fourCC!!!
+		//ArchiveFile:Fallout4 - Textures6.ba2/textures/interface/newspaper/dn101note_n.dds
+		//I also see the same problem for 1 mipmap as the 0 below perhaps
+		
+		
+		//image examplers that not working yet
+		//ArchiveFile:Oblivion - Textures - Compressed.bsa/textures/menus/breathmeter/breath_meter_fill.dds
+		//Compression format: 0x35545844 (DXT5)		Width: 512 Height: 64 Number of mip maps: 0
+ 		//ArchiveFile:Oblivion - Textures - Compressed.bsa/textures/menus/class/background.dds
+		//Number of mip maps: 0	Pixel format: D3DFMT_DXT5
+		//ArchiveFile:Oblivion - Textures - Compressed.bsa/textures/menus/container/cont_box_background_2.dds
+		//Number of mip maps: 0 		Pixel format: D3DFMT_DXT3
+		//ArchiveFile:Oblivion - Textures - Compressed.bsa/textures/menus/container/xbox_cont_select_frame.dds
+		//Number of mip maps: 0 		Pixel format: D3DFMT_DXT5
+		//ArchiveFile:Oblivion - Textures - Compressed.bsa/textures/magic/shockring.dds
+		//Number of mip maps: 0		Pixel format: D3DFMT_A8R8G8B8
+		// is it 0 mips?
+	
+		
+		//FO3
+		//ArchiveFile:Fallout - Textures.bsa/textures/fonts/baked-in_monofonto_large_0_lod_a.dds
+		//Number of mip maps: 0		Pixel format: (unknown pixel format 26)  -total crash
+		//ArchiveFile:Fallout - Textures.bsa/textures/effects/eyereflection.dds
+		//Number of mip maps: 0		Pixel format: D3DFMT_DXT1
+		
+		//FO3NV
+		//ArchiveFile:Fallout - Textures2.bsa/textures/effects/eyereflection.dds
+		//Number of mip maps: 0		Pixel format: D3DFMT_DXT1
+		
+		
+		//Skyrim
+		//ArchiveFile:Skyrim - Textures.bsa/textures/blood/bloodedge01add.dds
+		//Number of mip maps: 9		Pixel format: D3DFMT_DXT5
+		
+			
+		
+		
 		DDS_HEADER ddsHeader = new DDS_HEADER();
 		DDS_HEADER_DXT10 dx10Header = new DDS_HEADER_DXT10();
 		boolean dx10 = false;
@@ -299,108 +400,6 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 			ddsHeader.dwCubemapFlags = ddsHeader.DDS_CUBEMAP_ALLFACES;
 
 		switch (tex.format) {
-			case DDS_HEADER.DXGI_FORMAT_BC1_UNORM:
-				ddsHeader.ddspf = ddsHeader.DDSPF_DXT1;
-				//ddsHeader.ddspf.dwFlags = ddsHeader.DDS_FOURCC;
-				//ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('D', 'X', 'T', '1');
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height / 2; // 4bpp
-				break;
-			case DDS_HEADER.DXGI_FORMAT_BC1_UNORM_SRGB://FIXME: do I need to adjust for sRGB or is that a GPU thing?
-				ddsHeader.ddspf = ddsHeader.DDSPF_DXT1;
-				//ddsHeader.ddspf.dwFlags = ddsHeader.DDS_FOURCC;
-				//ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('D', 'X', 'T', '1');
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height / 2; // 4bpp
-				break;
-			case DDS_HEADER.DXGI_FORMAT_BC2_UNORM:
-				ddsHeader.ddspf = ddsHeader.DDSPF_DXT3;
-				//ddsHeader.ddspf.dwFlags = ddsHeader.DDS_FOURCC;
-				//ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('D', 'X', 'T', '3');
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
-				break;
-
-			case DDS_HEADER.DXGI_FORMAT_BC2_UNORM_SRGB:
-				ddsHeader.ddspf = ddsHeader.DDSPF_DXT3;
-				//ddsHeader.ddspf.dwFlags = ddsHeader.DDS_FOURCC;
-				//ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('D', 'X', 'T', '3');
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
-				break;
-
-			case DDS_HEADER.DXGI_FORMAT_BC3_UNORM:
-				ddsHeader.ddspf = ddsHeader.DDSPF_DXT5;
-				//ddsHeader.ddspf.dwFlags = ddsHeader.DDS_FOURCC;
-				//ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('D', 'X', 'T', '5');
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
-				break;
-			case DDS_HEADER.DXGI_FORMAT_BC3_UNORM_SRGB:
-				ddsHeader.ddspf = ddsHeader.DDSPF_DXT5;
-				//ddsHeader.ddspf.dwFlags = ddsHeader.DDS_FOURCC;
-				//ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('D', 'X', 'T', '5');
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
-				break;
-			case DDS_HEADER.DXGI_FORMAT_BC4_UNORM:
-				ddsHeader.dwHeaderFlags = 0xA1007;
-				ddsHeader.ddspf = ddsHeader.DDSPF_ATI1;
-				//ddsHeader.PixelFormat.dwFlags = DDS.DDS_FOURCC;
-				//ddsHeader.PixelFormat.dwFourCC = DDS.MAKEFOURCC('B', 'C', '4', 'U');
-				ddsHeader.dwPitchOrLinearSize = ((tex.width / 4) * (tex.height / 4) * 8);
-				break;
-			case DDS_HEADER.DXGI_FORMAT_BC5_UNORM:
-				//System.out.println(" BC5 " + entry.getFileName());
-
-				ddsHeader.ddspf = ddsHeader.DDSPF_ATI2;
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
-				break;
-
-			/*
-			 * Apparently better for normals data
-			 * https://www.gamedev.net/forums/topic/578936-directx-10-unorm-vs-snorm/
-			 * 
-			 * snorm format is for signed values. 
-			 * The scale/biasing amount depends the number of bits per channel in the format. 
-			 * A float32 snorm would provide the best precision.
-			 *  You can store the value directly within the range [-1.0,1.0]. 
-			 *  Larger things should get clamped. So mostly that confirms what you already knew. 
-			 * 
-			 * https://learn.microsoft.com/en-us/windows/win32/api/dxgiformat/ne-dxgiformat-dxgi_format
-				DXGI_FORMAT_BC5_UNORM
-				Value: 83
-				Two-component block-compression format. For information about block-compression formats, see Texture Block Compression in Direct3D 11.
-				DXGI_FORMAT_BC5_SNORM
-				Value: 84
-				Two-component block-compression format. For information about block-compression formats, see Texture Block Compression in Direct3D 11.
-			 */
-			case DDS_HEADER.DXGI_FORMAT_BC5_SNORM://FIXME is this signed ints or something?
-				//System.out.println(" BC5 " + entry.getFileName());
-
-				ddsHeader.ddspf = ddsHeader.DDSPF_ATI2;
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
-				break;
-			//GL.GL_ATI_texture_compression_3dc
-			//ddsHeader.ddspf = ddsHeader.DDSPF_DXT5;// this works fine and I can't use ATI2			
-			//ddsHeader.ddspf.dwFlags = ddsHeader.DDS_FOURCC;
-			//if (m_useATIFourCC)
-			//	ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('A', 'T', 'I', '2'); // this is more correct but the only thing I have found that supports it is the nvidia photoshop plugin
-			//else
-			//	ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('D', 'X', 'T', '5');
-
-			//ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
-			//break;
-
-			case DDS_HEADER.DXGI_FORMAT_BC7_UNORM:
-				ddsHeader.ddspf = ddsHeader.DDSPF_DX10;
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
-				// NOT seen yet
-				System.out.println("dx10 fourCC!!!!!!!!!!!!!!!!!!!!!!!!!! " + ddsHeader.ddspf.dwFourCC + " " + tex);
-				dx10 = true;
-				dx10Header.dxgiFormat = DDS_HEADER.DXGI_FORMAT_BC7_UNORM;
-				break;
-			// totally wrong but not worth writing out the DX10 header
-			//ddsHeader.ddspf.dwFlags = ddsHeader.DDS_FOURCC;
-			//ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('B', 'C', '7', '\0');
-
-			//ddsHeader.ddspf = new DDS_PIXELFORMAT(8 * 4, ddsHeader.DDS_FOURCC, ddsHeader.MAKEFOURCC('B', 'C', '7', '\0'), 0, 0, 0, 0, 0);
-
-			//ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
 			case DDS_HEADER.DXGI_FORMAT_B8G8R8A8_UNORM:
 				ddsHeader.ddspf = new DDS_PIXELFORMAT();
 				ddsHeader.ddspf.dwFlags = ddsHeader.DDS_RGBA;// in fact BGRA!
@@ -433,12 +432,101 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 				break;
 			case DDS_HEADER.DXGI_FORMAT_R8_UNORM:
 				ddsHeader.ddspf = new DDS_PIXELFORMAT();
-				ddsHeader.ddspf.dwFlags = ddsHeader.DDS_RGB;
 				ddsHeader.ddspf.dwRGBBitCount = 8;
 				ddsHeader.ddspf.dwRBitMask = 0xFF;
 				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
 				break;
+			//Cube maps in STF
+			case DDS_HEADER.DXGI_FORMAT_R16G16B16A16_FLOAT:
+				ddsHeader.ddspf = new DDS_PIXELFORMAT();
+				ddsHeader.ddspf.dwFlags = ddsHeader.DDS_RGBA;
+				ddsHeader.ddspf.dwRGBBitCount = 16;
+				ddsHeader.ddspf.dwRBitMask = 0x00FF0000;
+				ddsHeader.ddspf.dwGBitMask = 0x0000FF00;
+				ddsHeader.ddspf.dwBBitMask = 0x000000FF;
+				ddsHeader.ddspf.dwABitMask = 0xFF000000;
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 2; // 16bpp
+				break;
+			case DDS_HEADER.DXGI_FORMAT_R16G16B16A16_UNORM://not working DDSImage can't decode
+				ddsHeader.ddspf = new DDS_PIXELFORMAT();
+				ddsHeader.ddspf.dwFlags = ddsHeader.DDS_RGBA;
+				ddsHeader.ddspf.dwRGBBitCount = 16;
+				ddsHeader.ddspf.dwRBitMask = 0xFF000000;
+				ddsHeader.ddspf.dwGBitMask = 0x00FF0000;
+				ddsHeader.ddspf.dwBBitMask = 0x0000FF00;
+				ddsHeader.ddspf.dwABitMask = 0x000000FF;
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 2; // 16bpp
+				break;
+				
+			case DDS_HEADER.DXGI_FORMAT_BC1_UNORM:
+				ddsHeader.ddspf = ddsHeader.DDSPF_DXT1;
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height / 2; // 4bpp
+				break;
+			case DDS_HEADER.DXGI_FORMAT_BC1_UNORM_SRGB://FIXME:opengl tex format handles srgb
+				ddsHeader.ddspf = ddsHeader.DDSPF_DXT1;
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height / 2; // 4bpp
+				break;
+			case DDS_HEADER.DXGI_FORMAT_BC2_UNORM:
+				ddsHeader.ddspf = ddsHeader.DDSPF_DXT3;
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				break;
+			case DDS_HEADER.DXGI_FORMAT_BC2_UNORM_SRGB://FIXME:opengl tex format handles srgb
+				ddsHeader.ddspf = ddsHeader.DDSPF_DXT3;
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				break;
+			case DDS_HEADER.DXGI_FORMAT_BC3_UNORM:
+				ddsHeader.ddspf = ddsHeader.DDSPF_DXT5;
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				break;
+			case DDS_HEADER.DXGI_FORMAT_BC3_UNORM_SRGB://FIXME:opengl tex format handles srgb
+				ddsHeader.ddspf = ddsHeader.DDSPF_DXT5;
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				break;
+			case DDS_HEADER.DXGI_FORMAT_BC4_UNORM:
+				ddsHeader.dwHeaderFlags = 0xA1007;
+				ddsHeader.ddspf = ddsHeader.DDSPF_ATI1;
+				ddsHeader.dwPitchOrLinearSize = ((tex.width / 4) * (tex.height / 4) * 8);
+				break;
+			case DDS_HEADER.DXGI_FORMAT_BC5_UNORM:
+				ddsHeader.ddspf = ddsHeader.DDSPF_BC5U;
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				break;
+			 // https://www.gamedev.net/forums/topic/578936-directx-10-unorm-vs-snorm/
+			 // https://learn.microsoft.com/en-us/windows/win32/api/dxgiformat/ne-dxgiformat-dxgi_format
+			case DDS_HEADER.DXGI_FORMAT_BC5_SNORM:
+				ddsHeader.ddspf = ddsHeader.DDSPF_BC5S;
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				break;
+				
+			case DDS_HEADER.DXGI_FORMAT_BC7_UNORM:
+				ddsHeader.ddspf = ddsHeader.DDSPF_DX10;
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				// NOT seen yet
+				System.out.println("dx10 fourCC!!!!!!! DXGI_FORMAT_BC7_UNORM=" + ddsHeader.ddspf.dwFourCC + " " + tex);
+				dx10 = true;
+				dx10Header.dxgiFormat = DDS_HEADER.DXGI_FORMAT_BC7_UNORM;
+				break;
+			// totally wrong but not worth writing out the DX10 header
+			//ddsHeader.ddspf.dwFlags = ddsHeader.DDS_FOURCC;
+			//ddsHeader.ddspf.dwFourCC = ddsHeader.MAKEFOURCC('B', 'C', '7', '\0');
+			//ddsHeader.ddspf = new DDS_PIXELFORMAT(8 * 4, ddsHeader.DDS_FOURCC, ddsHeader.MAKEFOURCC('B', 'C', '7', '\0'), 0, 0, 0, 0, 0);
+			//ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp	
+				
+				
+				// see https://learn.microsoft.com/en-us/windows/win32/direct3d11/texture-block-compression-in-direct3d-11
+				
+			case DDS_HEADER.DXGI_FORMAT_BC7_UNORM_SRGB:
+				ddsHeader.ddspf = ddsHeader.DDSPF_DX10;
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				// NOT seen yet
+				System.out.println("dx10 fourCC!!!!!!! DXGI_FORMAT_BC7_UNORM_SRGB=" + ddsHeader.ddspf.dwFourCC + " " + tex);
+				dx10 = true;
+				dx10Header.dxgiFormat = DDS_HEADER.DXGI_FORMAT_BC7_UNORM_SRGB;
+				break;
+				
+				
 
+				
 			default:
 				System.err.println("unhandled format " + tex.format + " " + tex);
 				return;

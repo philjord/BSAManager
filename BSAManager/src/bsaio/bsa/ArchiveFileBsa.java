@@ -325,7 +325,7 @@ public class ArchiveFileBsa extends ArchiveFile {
 			}
 
 			//output some interesting facts
-			System.out.println("archiveFlags for " + this.fileName + " " + this.archiveFlags);
+		/*	System.out.println("archiveFlags for " + this.fileName + " " + this.archiveFlags);
 			System.out.println("fileFlags    for " + this.fileName + " " + this.fileFlags);
 
 			System.out.println("hasNifOrKf() " + hasNifOrKf());
@@ -333,7 +333,7 @@ public class ArchiveFileBsa extends ArchiveFile {
 			System.out.println("hasDDS() " + hasDDS());
 			System.out.println("hasKTX( " + hasKTX());
 			System.out.println("hasSounds() " + hasSounds());
-			System.out.println("hasMaterials() " + hasMaterials());
+			System.out.println("hasMaterials() " + hasMaterials());*/
 		}
 
 	}
