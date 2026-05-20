@@ -14,6 +14,7 @@ import bsaio.ArchiveFile;
 import bsaio.DBException;
 import bsaio.HashCode;
 import bsaio.displayables.DisplayableArchiveEntry;
+import tools.io.FileChannelRAF;
 
 public class ArchiveFileTes3 extends ArchiveFile {
 
@@ -96,7 +97,8 @@ public class ArchiveFileTes3 extends ArchiveFile {
 
 	@Override
 	public void load() throws DBException, IOException {
-		FileChannel ch = file;
+		in = new FileChannelRAF(file);
+		FileChannel ch = in.getChannel();
 		//reset to start
 		long pos = 0;
 
