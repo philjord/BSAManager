@@ -25,7 +25,7 @@ public abstract class ArchiveFile {
 	protected FileChannel				file;
 	protected String					fileName;
 
-	protected FileChannelRAF			in;
+	protected FileChannelRAF			in; //FIXME: FileChannelRAF can now be converted to just FileChannel
 
 	protected int						folderCount;
 
@@ -157,7 +157,7 @@ public abstract class ArchiveFile {
 	public static ArchiveFile createArchiveFile(boolean isForDisplay, FileChannel file, String fileName)
 			throws DBException, IOException {
 
-		FileChannelRAF in = new FileChannelRAF(file, "r");
+		FileChannelRAF in = new FileChannelRAF(file);
 		FileChannel ch = in.getChannel();
 
 		// test for TES3 BSA format flag\

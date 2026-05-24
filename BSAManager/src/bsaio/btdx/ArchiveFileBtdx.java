@@ -188,7 +188,7 @@ public class ArchiveFileBtdx extends ArchiveFile {
 
 	@Override
 	public void load() throws DBException, IOException {
-		in = new FileChannelRAF(file, "r");// needed elsewhere
+		in = new FileChannelRAF(file);// needed elsewhere
 		FileChannel ch = file;
 
 		long pos = 0;
