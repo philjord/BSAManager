@@ -14,7 +14,6 @@ import bsaio.ArchiveEntry;
 import bsaio.btdx.ArchiveEntryDX10.DX10Chunk;
 import bsaio.btdx.DDS_HEADER.DDS_HEADER_DXT10;
 import bsaio.btdx.DDS_HEADER.DDS_PIXELFORMAT;
-import compressedtexture.DDSImage;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4FastDecompressor;
 import tools.io.FileChannelRAF;
@@ -318,7 +317,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 	
 	private static void insertHeader(ArchiveEntryDX10 tex, ByteBuffer dst) {
 		
-		
+		//FIXME: textures not loading yet
 		//STF
 		//ArchiveFile:Starfield - Textures05.ba2/textures/effects/weather/cloudcards/clouds_directions.dds
 		//Pixel format: D3DFMT_DX10		Bad DXT format (for now) 808540228 GL=-1 
@@ -327,6 +326,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 		//Unsupported DDS format 0 for file
 		//Unsupported DDS format 0 for file textures\cubemaps\cell_previewwindowcube.dds
 		//Unsupported DDS format 0 for file textures\effects\gradients\cloaksurface_ropacity.dds
+		//Unsupported DDS format 0 for file textures/cubemaps/cell_cityplazacube.dds
 
 		//unhandled format 11 ArchiveFile:Starfield - Textures05.ba2/textures/effects/gradients/gasgiantcolor01_grad.dds
 		//class org.jogamp.java3d.compressedtexture.CompressedTextureLoader$DDS had a  IO problem with textures\effects\gradients\gasgiantcolor01_grad.dds : java.io.IOException: Incorrect magic number 0x0 (expected 0x20534444) or 0x5a485aa8) compressedtexture.DDSImage$Header.read(DDSImage.java:763)
