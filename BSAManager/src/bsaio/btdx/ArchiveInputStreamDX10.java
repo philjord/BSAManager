@@ -36,121 +36,9 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 	 */
 	public ArchiveInputStreamDX10(FileChannelRAF in, ArchiveEntry entry) throws IOException {
 		super(new byte[0]);//reset below once data is available
-
-		if(decompressor == null) {
-			factory = LZ4Factory.fastestInstance();
-			decompressor = factory.fastDecompressor();
-		}
 		
-		FileChannel ch = in.getChannel();
-
-		ArchiveEntryDX10 tex = (ArchiveEntryDX10)entry;
-		int requiredBufferSize = 32 * 4;
-		
-		// DX10 inserts a bit more data
-		if (tex.format == DDS_HEADER.DXGI_FORMAT_BC7_UNORM ||
-				tex.format == DDS_HEADER.DXGI_FORMAT_BC7_UNORM_SRGB) {
-			requiredBufferSize += 24; //4 extra int and a long
-		}
-		
-		for (int j = 0; j < tex.chunks.length; j++) {
-			requiredBufferSize += tex.chunks[j].unpackedLen;
-		}
-		// to collect up all the chunks, note not direct as we want the byte[] behind it
-		ByteBuffer dst = ByteBuffer.allocate(requiredBufferSize);
-		dst.order(ByteOrder.LITTLE_ENDIAN);
-		insertHeader(tex, dst);
-
-		//FIXME I need ot be able to send GNFDX10 entries to something like this, but not
-		if (entry.isCompressed()) {
-			if (entry.getCompressionType() == ArchiveEntry.CompressionFormat.ZIP) {
-
-				// Java straight inflate load near =13sec
-				Inflater inflater = new Inflater();
-				// each chunk can have any number of mips in it, so later one could be bigger than earlier!
-				byte[] dstBuff = new byte[tex.chunks[0].unpackedLen];
-				byte[] srcBuf = new byte[tex.chunks[0].packedLen];
-				for (int j = 0; j < tex.chunks.length; j++) {
-					DX10Chunk chunk = tex.chunks[j];
-
-					if (chunk.packedLen > srcBuf.length)
-						srcBuf = new byte[chunk.packedLen];
-
-					if (chunk.unpackedLen > dstBuff.length)
-						dstBuff = new byte[chunk.unpackedLen];
-
-					int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
-
-					if (c < 0)
-						throw new EOFException("Unexpected end of stream while inflating file");
-
-					inflater.reset();
-					inflater.setInput(srcBuf, 0, chunk.packedLen);
-
-					try {
-						int count = inflater.inflate(dstBuff);
-						if (count != chunk.unpackedLen)
-							System.err.println("ZIP Inflate count issue! " + entry);
-					} catch (DataFormatException e) {
-						e.printStackTrace();
-					}
-
-					dst.put(dstBuff, 0, chunk.unpackedLen);
-				}
-			} else if (entry.getCompressionType() == ArchiveEntry.CompressionFormat.LZ4) {
-
-				//https://github.com/yawkat/lz4-java
-				//	<dependency>
-				//    <groupId>at.yawk.lz4</groupId>
-				//    <artifactId>lz4-java</artifactId>
-				//		<version>1.10.2</version>
-				//</dependency>
-
-				byte[] dstBuff = new byte[tex.chunks[0].unpackedLen];
-				byte[] srcBuf = new byte[tex.chunks[0].packedLen];
-				for (int j = 0; j < tex.chunks.length; j++) {
-					DX10Chunk chunk = tex.chunks[j];
-
-					if (chunk.packedLen > srcBuf.length)
-						srcBuf = new byte[chunk.packedLen];
-
-					if (chunk.unpackedLen > dstBuff.length)
-						dstBuff = new byte[chunk.unpackedLen];
-
-					int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
-
-					if (c < 0)
-						throw new EOFException("Unexpected end of stream while inflating file");
-
-					int count = decompressor.decompress(srcBuf, 0, dstBuff, 0, chunk.unpackedLen);
-					if (count != chunk.unpackedLen) {
-						//seems super common and doesn't seem to cause trouble
-						//System.err.println("LZ4 Inflate count issue! "	+ entry + " chunk.unpackedLen= " + chunk.unpackedLen
-						//					+ " count=" + count);
-					}
-
-					dst.put(dstBuff, 0, chunk.unpackedLen);
-
-				}
-
-			} else {
-				new Throwable("Unknown ArchiveEntry compressionType! " + entry.getCompressionType()).printStackTrace();
-			}
-		} else {
-			byte[] srcBuf = new byte[tex.chunks[0].packedLen];
-			for (int j = 0; j < tex.chunks.length; j++) {
-				DX10Chunk chunk = tex.chunks[j];
-
-				if (chunk.packedLen > srcBuf.length)
-					srcBuf = new byte[chunk.packedLen];
-
-				int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
-				if (c < 0)
-					throw new EOFException("Unexpected end of stream while inflating file");
-
-				dst.put(srcBuf, 0, chunk.packedLen);
-			}
-		}
+		//note not direct as we want the byte[] behind it
+		ByteBuffer dst = getByteBuffer(in, entry, false);
 		this.buf = dst.array();
 		this.pos = 0;
 		this.count = buf.length;
@@ -198,7 +86,6 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 			dst = ByteBuffer.allocateDirect(requiredBufferSize);
 		}
 		dst.order(ByteOrder.LITTLE_ENDIAN);
-
 		
 		insertHeader(tex, dst);
 
@@ -316,18 +203,13 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 	}
 	
 	private static void insertHeader(ArchiveEntryDX10 tex, ByteBuffer dst) {
-		
 		//FIXME: textures not loading yet
 		//STF
 		//ArchiveFile:Starfield - Textures05.ba2/textures/effects/weather/cloudcards/clouds_directions.dds
 		//Pixel format: D3DFMT_DX10		Bad DXT format (for now) 808540228 GL=-1 
 		
-		// ArchiveFile:Starfield - Textures05.ba2/textures/cubemaps/blackcube.dds
-		//Unsupported DDS format 0 for file
-		//Unsupported DDS format 0 for file textures\cubemaps\cell_previewwindowcube.dds
 		//Unsupported DDS format 0 for file textures\effects\gradients\cloaksurface_ropacity.dds
-		//Unsupported DDS format 0 for file textures/cubemaps/cell_cityplazacube.dds
-
+		
 		//unhandled format 11 ArchiveFile:Starfield - Textures05.ba2/textures/effects/gradients/gasgiantcolor01_grad.dds
 		//class org.jogamp.java3d.compressedtexture.CompressedTextureLoader$DDS had a  IO problem with textures\effects\gradients\gasgiantcolor01_grad.dds : java.io.IOException: Incorrect magic number 0x0 (expected 0x20534444) or 0x5a485aa8) compressedtexture.DDSImage$Header.read(DDSImage.java:763)
 		
@@ -434,28 +316,31 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 				ddsHeader.ddspf = new DDS_PIXELFORMAT();
 				ddsHeader.ddspf.dwRGBBitCount = 8;
 				ddsHeader.ddspf.dwRBitMask = 0xFF;
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 1; // 8bpp
 				break;
-			//Cube maps in STF
+				//Cube maps in STF
+				//https://wikis.khronos.org/opengl/Cubemap_Texture
+				//GL_RGBA16F pipeline doesn't display properly, so decoded/recoded to ETC now
 			case DDS_HEADER.DXGI_FORMAT_R16G16B16A16_FLOAT:
 				ddsHeader.ddspf = new DDS_PIXELFORMAT();
 				ddsHeader.ddspf.dwFlags = ddsHeader.DDS_RGBA;
-				ddsHeader.ddspf.dwRGBBitCount = 16;
-				ddsHeader.ddspf.dwRBitMask = 0x00FF0000;
+				ddsHeader.ddspf.dwRGBBitCount = 64;
+				ddsHeader.ddspf.dwRBitMask = 0x000000FF;
 				ddsHeader.ddspf.dwGBitMask = 0x0000FF00;
-				ddsHeader.ddspf.dwBBitMask = 0x000000FF;
+				ddsHeader.ddspf.dwBBitMask = 0x00FF0000;
 				ddsHeader.ddspf.dwABitMask = 0xFF000000;
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 2; // 16bpp
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 8; // 64bpp
 				break;
+				//GL_RGBA16 pipeline doesn't display properly, so decoded/recoded to ETC now
 			case DDS_HEADER.DXGI_FORMAT_R16G16B16A16_UNORM://not working DDSImage can't decode
 				ddsHeader.ddspf = new DDS_PIXELFORMAT();
 				ddsHeader.ddspf.dwFlags = ddsHeader.DDS_RGBA;
-				ddsHeader.ddspf.dwRGBBitCount = 16;
+				ddsHeader.ddspf.dwRGBBitCount = 64;
 				ddsHeader.ddspf.dwRBitMask = 0xFF000000;
 				ddsHeader.ddspf.dwGBitMask = 0x00FF0000;
 				ddsHeader.ddspf.dwBBitMask = 0x0000FF00;
 				ddsHeader.ddspf.dwABitMask = 0x000000FF;
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 2; // 16bpp
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 8; // 64bpp
 				break;
 				
 			case DDS_HEADER.DXGI_FORMAT_BC1_UNORM:
@@ -468,39 +353,39 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 				break;
 			case DDS_HEADER.DXGI_FORMAT_BC2_UNORM:
 				ddsHeader.ddspf = ddsHeader.DDSPF_DXT3;
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 1; // 8bpp
 				break;
 			case DDS_HEADER.DXGI_FORMAT_BC2_UNORM_SRGB://FIXME:opengl tex format handles srgb
 				ddsHeader.ddspf = ddsHeader.DDSPF_DXT3;
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 1; // 8bpp
 				break;
 			case DDS_HEADER.DXGI_FORMAT_BC3_UNORM:
 				ddsHeader.ddspf = ddsHeader.DDSPF_DXT5;
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 1; // 8bpp
 				break;
 			case DDS_HEADER.DXGI_FORMAT_BC3_UNORM_SRGB://FIXME:opengl tex format handles srgb
 				ddsHeader.ddspf = ddsHeader.DDSPF_DXT5;
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 1; // 8bpp
 				break;
 			case DDS_HEADER.DXGI_FORMAT_BC4_UNORM:
 				ddsHeader.dwHeaderFlags = 0xA1007;
 				ddsHeader.ddspf = ddsHeader.DDSPF_ATI1;
-				ddsHeader.dwPitchOrLinearSize = ((tex.width / 4) * (tex.height / 4) * 8);
+				ddsHeader.dwPitchOrLinearSize = ((tex.width / 4) * (tex.height / 4) * 8);// 4bpp
 				break;
 			case DDS_HEADER.DXGI_FORMAT_BC5_UNORM:
 				ddsHeader.ddspf = ddsHeader.DDSPF_BC5U;
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 1; // 8bpp
 				break;
 			 // https://www.gamedev.net/forums/topic/578936-directx-10-unorm-vs-snorm/
 			 // https://learn.microsoft.com/en-us/windows/win32/api/dxgiformat/ne-dxgiformat-dxgi_format
 			case DDS_HEADER.DXGI_FORMAT_BC5_SNORM:
 				ddsHeader.ddspf = ddsHeader.DDSPF_BC5S;
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 1; // 8bpp
 				break;
 				
 			case DDS_HEADER.DXGI_FORMAT_BC7_UNORM:
 				ddsHeader.ddspf = ddsHeader.DDSPF_DX10;
-				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height; // 8bpp
+				ddsHeader.dwPitchOrLinearSize = tex.width * tex.height * 1; // 8bpp
 				// NOT seen yet
 				System.out.println("dx10 fourCC!!!!!!! DXGI_FORMAT_BC7_UNORM=" + ddsHeader.ddspf.dwFourCC + " " + tex);
 				dx10 = true;

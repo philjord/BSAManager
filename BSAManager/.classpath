@@ -8,6 +8,6 @@
 	</classpathentry>
 	<classpathentry combineaccessrules="false" kind="src" path="/Tools"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/3DTools"/>
-	<classpathentry exported="true" kind="lib" path="libs/lz4-java-1.10.2.jar"/>
+	<classpathentry exported="true" kind="lib" path="libs/lz4-java-1.10.2.jar" sourcepath="C:/Users/pjnz/git/BSAManager/BSAManager/libs/lz4-java-1.10.2-sources.jar"/>
 	<classpathentry kind="output" path="output"/>
 </classpath>
