@@ -116,16 +116,8 @@ public abstract class ArchiveFile {
 			throw new IOException("Archive file is not open");
 		}
 
-		return ArchiveInputStream.getByteBuffer(in, entry, false);
-	}
-
-	public ByteBuffer getByteBuffer(ArchiveEntry entry, boolean allocateDirect) throws IOException {
-		if (in == null) {
-			throw new IOException("Archive file is not open");
-		}
-
-		return ArchiveInputStream.getByteBuffer(in, entry, allocateDirect);
-	}
+		return ArchiveInputStream.getByteBuffer(in, entry);
+	}	
 
 	public void close() throws IOException {
 		if (in != null) {

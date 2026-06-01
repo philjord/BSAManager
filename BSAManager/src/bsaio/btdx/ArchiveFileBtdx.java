@@ -163,28 +163,15 @@ public class ArchiveFileBtdx extends ArchiveFile {
 		}
 
 		if (bsaFileType == BsaFileType.DX10) {
-			return ArchiveInputStreamDX10.getByteBuffer(in, entry, false);
+			return ArchiveInputStreamDX10.getByteBuffer(in, entry);
 		} else if (bsaFileType == BsaFileType.GNMF) {
 			throw new UnsupportedOperationException("GNMF getByteBuffer not yet quite finished mip count is a problem");
 		} else {
-			return ArchiveInputStream.getByteBuffer(in, entry, false);
+			return ArchiveInputStream.getByteBuffer(in, entry);
 		}
 	}
 
-	@Override
-	public ByteBuffer getByteBuffer(ArchiveEntry entry, boolean allocateDirect) throws IOException {
-		if (in == null) {
-			throw new IOException("Archive file is not open");
-		}
-
-		if (bsaFileType == BsaFileType.DX10) {
-			return ArchiveInputStreamDX10.getByteBuffer(in, entry, allocateDirect);
-		} else if (bsaFileType == BsaFileType.GNMF) {
-			throw new UnsupportedOperationException("GNMF getByteBuffer not yet quite finished mip count is a problem");
-		} else {
-			return ArchiveInputStream.getByteBuffer(in, entry, allocateDirect);
-		}
-	}
+	 
 
 	@Override
 	public void load() throws DBException, IOException {

@@ -1,9 +1,11 @@
 package bsaio;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
+import java.nio.channels.FileChannel.MapMode;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
@@ -15,8 +17,18 @@ import tools.io.FileChannelRAF;
 
 public class ArchiveInputStream extends FastByteArrayInputStream {
 
-	private static ByteBufferPool pool = new ByteBufferPool();
+	//1,0,-1 1 uses mapped from channels, 0 reads into a bytebuffer, both seem the same for speed and memory use
+	public static int				USE_MAPPED	= 1;
 
+	private static ByteBufferPool	pool		= new ByteBufferPool();
+
+	/**
+	 * This constructor is not used in any game, only utils, it is not a wise thing to use, getByteBuffer below is the
+	 * bettereer
+	 * @param in
+	 * @param entry
+	 * @throws IOException
+	 */
 	public ArchiveInputStream(FileChannelRAF in, ArchiveEntry entry) throws IOException {
 		super(new byte[0]);//reset below once data is available
 		FileChannel ch = in.getChannel();
@@ -27,7 +39,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 
 		byte[] dataBufferOut = new byte[entry.getFileLength()];
 
-		//the inflate doesn't accept a bytebuffer
+		//use the byte bufer calls below bytebuffer
 		boolean isCompressed = entry.isCompressed();
 		if (isCompressed && entry.getFileLength() > 0) {
 			// entry size for buffer
@@ -53,20 +65,13 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 			ch.read(ByteBuffer.wrap(dataBufferOut), entry.getFileOffset());
 		}
 
+		// replace this.buf with a get it when asked for from getByteBuffer?
 		this.buf = dataBufferOut;
 		this.pos = 0;
 		this.count = buf.length;
 	}
 
-	/**
-	 * Be careful see ArchiveFile for warning
-	 * @param in
-	 * @param entry
-	 * @return
-	 * @throws IOException
-	 */
-	public static ByteBuffer getByteBuffer(FileChannelRAF in, ArchiveEntry entry, boolean allocateDirect)
-			throws IOException {
+	public static ByteBuffer getByteBuffer(FileChannelRAF in, ArchiveEntry entry) throws IOException {		
 		FileChannel ch = in.getChannel();
 		// not sure why this is bad, something weird with defaultcompressed flag the the archive load up
 		if (entry.getFileLength() == 0)
@@ -80,51 +85,116 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 			return null;
 		}
 
-		byte[] dataBufferOut = null;
-
 		//the inflate doesn't accept a bytebuffer
 		boolean isCompressed = entry.isCompressed();
 		if (isCompressed && entry.getFileLength() > 0) {
-			dataBufferOut = new byte[entry.getFileLength()];
+			if (USE_MAPPED == 1 || USE_MAPPED == 0) {
+				ByteBuffer bb = ByteBuffer.allocateDirect(entry.getFileLength()).order(ByteOrder.nativeOrder());
+				int compressedLength = entry.getCompressedLength();
+				//CAREFUL mapping only works if the data is fully read off, watch out for Textures that go to the GPU
+				ByteBuffer dataBufferInBB = null;
+				if (USE_MAPPED == 0) {
+					dataBufferInBB = pool.take(compressedLength);
+					ch.read(dataBufferInBB, entry.getFileOffset());
+					dataBufferInBB.rewind();
+				} else {
+					dataBufferInBB = ch.map(MapMode.READ_ONLY, entry.getFileOffset(), compressedLength);
+				}
 
-			// entry size for buffer
-			int compressedLength = entry.getCompressedLength();
-			ByteBuffer dataBufferInBB = pool.take(compressedLength);
-			//byte[] dataBufferIn = new byte[compressedLength];
+				Inflater inflater = new Inflater();
+				inflater.setInput(dataBufferInBB);
+				try {
+					int count = inflater.inflate(bb);
+					if (count != entry.getFileLength())
+						System.err.println("Inflate count issue! count = "	+ count + " expected "
+											+ entry.getFileLength() + " hashcode= " + entry.getFileHashCode());
+				} catch (DataFormatException e) {
+					System.err
+							.println(ArchiveInputStream.class.getName() + ".getByteBuffer Inflater DataFormatException "
+										+ " hashcode= " + entry.getFileHashCode());
+				}
+				inflater.end();
+				if (USE_MAPPED == 0) {
+					pool.give(dataBufferInBB);
+				}
+				bb.rewind();
+				return bb;
+			} else {
+				byte[] dataBufferOut = new byte[entry.getFileLength()];
+				ByteBuffer bb = ByteBuffer.allocateDirect(entry.getFileLength());
+				bb.order(ByteOrder.nativeOrder());
+				// entry size for buffer
+				int compressedLength = entry.getCompressedLength();
+				ByteBuffer dataBufferInBB = pool.take(compressedLength);
+				byte[] dataBufferIn = new byte[compressedLength];
 
-			//ch.read(ByteBuffer.wrap(dataBufferIn), entry.getFileOffset());
-			ch.read(dataBufferInBB, entry.getFileOffset());
+				ch.read(ByteBuffer.wrap(dataBufferIn), entry.getFileOffset());
 
-			Inflater inflater = new Inflater();
-			//inflater.setInput(dataBufferIn);
-			inflater.setInput(dataBufferInBB.array());
-			try {
-				int count = inflater.inflate(dataBufferOut);
-				if (count != entry.getFileLength())
-					System.err.println("Inflate count issue!  " + entry.getFileHashCode());
-			} catch (DataFormatException e) {
-				e.printStackTrace();
+				Inflater inflater = new Inflater();
+				inflater.setInput(dataBufferIn);
+				try {
+					int count = inflater.inflate(dataBufferOut);
+					if (count != entry.getFileLength())
+						System.err.println("Inflate count issue! coutn = "	+ count + " expected "
+											+ entry.getFileLength() + " hashcode= " + entry.getFileHashCode());
+				} catch (DataFormatException e) {
+					System.err
+							.println(ArchiveInputStream.class.getName() + ".getByteBuffer Inflater DataFormatException "
+										+ " hashcode= " + entry.getFileHashCode());
+				}
+				inflater.end();
+				pool.give(dataBufferInBB);
+
+				bb.put(dataBufferOut);
+				bb.rewind();
+				return bb;
 			}
-			inflater.end();
-			pool.give(dataBufferInBB);
-
-			// someone is calling no direct, but I think I can't see the advantage, if it ever touches the GPU API it must be direct
-			//if (!allocateDirect) {
-			//	return ByteBuffer.wrap(dataBufferOut);
-			//} else {
-			ByteBuffer bb = ByteBuffer.allocateDirect(dataBufferOut.length);
-			bb.order(ByteOrder.nativeOrder());
-			bb.put(dataBufferOut);
-			bb.position(0);
-			return bb;
-			//}
 		} else {
-			//ByteBuffer bb = allocateDirect ? ByteBuffer.allocateDirect(entry.getFileLength()) : ByteBuffer.allocate(entry.getFileLength());
+			//This is where a mappedbytebuffer could be a real problem, it might get all the way to the pipeline
 			ByteBuffer bb = ByteBuffer.allocateDirect(entry.getFileLength());
 			ch.read(bb, entry.getFileOffset());
-			bb.position(0);
+			bb.rewind();
 			return bb;
 		}
 
 	}
+
+	//TODO!!!! this will tell me who is using this as a stream and help to get it unstreamed!
+	public synchronized int read() {
+		return super.read();
+	}
+
+	public synchronized int read(byte b[], int off, int len) {
+		return super.read(b, off, len);
+	}
+
+	public synchronized byte[] readAllBytes() {
+		return super.readAllBytes();
+	}
+
+	public int readNBytes(byte[] b, int off, int len) {
+		return super.readNBytes(b, off, len);
+	}
+
+	public synchronized long transferTo(OutputStream out) throws IOException {
+		return super.transferTo(out);
+	}
+
+	public synchronized long skip(long n) {
+		return super.skip(n);
+	}
+
+	public synchronized int available() {
+		return super.available();
+	}
+
+	public void mark(int readAheadLimit) {
+		super.mark(readAheadLimit);
+	}
+
+	public synchronized void reset() {
+		super.reset();
+	}
+
+	    
 }
