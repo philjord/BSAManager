@@ -61,7 +61,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 		//BsaMeshSource for utils in 3DUtilsDesktop so not hard to swap out
 
 		//note not direct as we want the byte[] behind it
-		ByteBuffer dst = getByteBuffer(in, entry);
+		ByteBuffer dst = getByteBuffer(in, entry, false);
 		this.buf = dst.array();
 		this.pos = 0;
 		this.count = buf.length;
@@ -79,7 +79,11 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 	 * @throws IOException
 	 */
 	public static ByteBuffer getByteBuffer(FileChannelRAF in, ArchiveEntry entry) throws IOException {
-
+		return getByteBuffer(in, entry, true); 
+	}
+	
+	//non direct added to support the stream init thing
+	private static ByteBuffer getByteBuffer(FileChannelRAF in, ArchiveEntry entry, boolean direct) throws IOException {
 		if (decompressor == null) {
 			factory = LZ4Factory.fastestInstance();
 			decompressor = factory.fastDecompressor();
@@ -98,7 +102,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 			requiredBufferSize += tex.chunks[j].unpackedLen;
 		}
 		// collect up all the chunks
-		ByteBuffer dst = ByteBuffer.allocateDirect(requiredBufferSize);
+		ByteBuffer dst = direct ? ByteBuffer.allocateDirect(requiredBufferSize) : ByteBuffer.allocate(requiredBufferSize);
 		dst.order(ByteOrder.LITTLE_ENDIAN);//NOTE!!!
 
 		insertHeader(tex, dst);

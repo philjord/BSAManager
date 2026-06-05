@@ -155,7 +155,7 @@ public class ArchiveFileBsa extends ArchiveFile {
 					String fileName = filenameHashToFileNameMap.get(fileHash);
 
 					if (fileName == null)
-						System.out.println("entry of null with hash of " + fileHash);
+						System.err.println("entry of null with hash of " + fileHash);
 
 					entry = new DisplayableArchiveEntry(this, folderName, fileName);
 				} else {
@@ -318,7 +318,7 @@ public class ArchiveFileBsa extends ArchiveFile {
 					throw new DBException("File names buffer truncated " + fileName);
 
 				String filename = new String(nameBuffer, startIndex, bufferIndex - startIndex);
-
+				
 				filenameHashToFileNameMap.put(HashCode.hashCode(filename, false), filename);
 
 				bufferIndex++;

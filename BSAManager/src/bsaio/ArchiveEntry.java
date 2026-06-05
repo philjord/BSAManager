@@ -70,7 +70,10 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 		else
 			fileHashCode = HashCode.hashCodeCRC32(fileName, false);
 	}
-
+	
+	/**
+	 * For use with texture conversion mainly, I can't see any other use for it
+	 */
 	public void setFolderName(String folderName, HashFormat hf) {
 		if (folderName.length() > 254) {
 			throw new IllegalArgumentException("Folder name is longer than 254 characters " + folderName);

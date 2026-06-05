@@ -14,6 +14,10 @@ public interface Displayable
 	
 	ArchiveFile getArchiveFile();
 
+	
+	/**
+	 * For use with texture conversion mainly, I can't see any other use for it
+	 */
 	void setFileName(String fileName, HashFormat hf); 
-
+	
 }

@@ -12,9 +12,9 @@ public class DisplayableArchiveEntry extends ArchiveEntry implements Displayable
 	private String		folderName;
 
 	private String		entryName;
-	
+
 	public DisplayableArchiveEntry(ArchiveFile archiveFile, String folderName, String fileName) {
-		this(archiveFile, folderName, fileName, HashFormat.OLD);		 
+		this(archiveFile, folderName, fileName, HashFormat.OLD);
 	}
 
 	public DisplayableArchiveEntry(ArchiveFile archiveFile, String folderName, String fileName, HashFormat hf) {
@@ -34,7 +34,10 @@ public class DisplayableArchiveEntry extends ArchiveEntry implements Displayable
 	public String getFolderName() {
 		return folderName;
 	}
-
+	
+	/**
+	 * For use with texture conversion mainly, I can't see any other use for it
+	 */
 	@Override
 	public void setFolderName(String folderName, HashFormat hf) {
 		super.setFolderName(folderName, hf);
@@ -47,6 +50,9 @@ public class DisplayableArchiveEntry extends ArchiveEntry implements Displayable
 		return fileName;
 	}
 
+	/**
+	 * For use with texture conversion mainly, I can't see any other use for it
+	 */
 	@Override
 	public void setFileName(String fileName, HashFormat hf) {
 		if (fileName.length() > 254) {
@@ -56,6 +62,9 @@ public class DisplayableArchiveEntry extends ArchiveEntry implements Displayable
 		this.fileName = fileName;
 		entryName = (new StringBuilder()).append(folderName).append("\\").append(fileName).toString();
 
+		//Note if we alter the file name hash using the older hash system (or use a new HashFormat) 
+		//we must also reset the folder name hash to the older system otherwise compareTo will be incorrect		
+		setFolderName(getFolderName(), hf);
 	}
 
 	@Override

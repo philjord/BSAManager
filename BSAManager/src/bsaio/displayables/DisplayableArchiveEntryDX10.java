@@ -29,7 +29,10 @@ public class DisplayableArchiveEntryDX10 extends ArchiveEntryDX10 implements Dis
 	public String getFolderName() {
 		return folderName;
 	}
-
+	
+	/**
+	 * For use with texture conversion mainly, I can't see any other use for it
+	 */
 	@Override
 	public void setFolderName(String folderName, HashFormat hf) {
 		super.setFolderName(folderName, hf);
@@ -42,6 +45,9 @@ public class DisplayableArchiveEntryDX10 extends ArchiveEntryDX10 implements Dis
 		return fileName;
 	}
 	
+	/**
+	 * For use with texture conversion mainly, I can't see any other use for it
+	 */
 	@Override
 	public void setFileName(String fileName, HashFormat hf) {
 		if (fileName.length() > 254) {
@@ -51,6 +57,9 @@ public class DisplayableArchiveEntryDX10 extends ArchiveEntryDX10 implements Dis
 		this.fileName = fileName;
 		entryName = (new StringBuilder()).append(folderName).append("\\").append(fileName).toString();
 
+		//Note if we alter the file name hash using the older hash system (or use a new HashFormat) 
+		//we must also reset the folder name hash to the older system otherwise compareTo will be incorrect		
+		setFolderName(getFolderName(), hf);
 	}
 
 	@Override
