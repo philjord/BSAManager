@@ -1,14 +1,23 @@
 package bsaio;
 
+import java.io.EOFException;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+
+import bsaio.bsa.ArchiveFileBsa;
+
 public class ArchiveEntry implements Comparable<ArchiveEntry> {
 
+	protected ArchiveFile	archiveFile;				
+	
 	protected long	folderHashCode;
 
 	protected long	fileHashCode;
 
-	private long	fileOffset;
+	private long	dataOffset;
 
-	private int		fileLength;
+	private int		dataLength;
 
 	private int		compressedLength;
 
@@ -42,12 +51,14 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 		
 		setFolderHash(folderName, hf);
 		setFileHash(fileName, hf);
+		this.archiveFile = archiveFile;
 	}
 
 	
 	public ArchiveEntry(ArchiveFile archiveFile, long folderHashCode, long fileHashCode) {
 		this.folderHashCode = folderHashCode;
 		this.fileHashCode = fileHashCode;
+		this.archiveFile = archiveFile;
 	}
 	
 	/**
@@ -91,19 +102,19 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 	}
 
 	public long getFileOffset() {
-		return fileOffset;
+		return dataOffset;
 	}
 
 	public void setFileOffset(long offset) {
-		fileOffset = offset;
+		dataOffset = offset;
 	}
 
 	public int getFileLength() {
-		return fileLength;
+		return dataLength;
 	}
 
 	public void setFileLength(int length) {
-		fileLength = length;
+		dataLength = length;		
 	}
 
 	public boolean isCompressed() {
@@ -112,6 +123,7 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 
 	public void setCompressed(boolean isCompressed) {
 		this.isCompressed = isCompressed;
+		this.ready = true;
 	}
 
 	public int getCompressedLength() {
@@ -120,6 +132,7 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 
 	public void setCompressedLength(int length) {
 		compressedLength = length;
+		this.ready = true;
 	}
 
 	@Override
@@ -158,6 +171,90 @@ public class ArchiveEntry implements Comparable<ArchiveEntry> {
 
 	public void setCompressionType(CompressionFormat compressionType) {
 		this.compressionType = compressionType;
+	}
+	
+	
+	public boolean ready = false;
+	
+	public void ensureEntryReady(FileChannel ch) throws IOException {
+		int version = archiveFile.getVersion();
+		if(ready) {
+			//FIXME: I'm gettign some double calls see ArchiveInputStream
+			//System.out.println("aww hell nay double ready call!");
+			return;
+		}
+		ready = true;
+		
+		
+
+		byte[] buffer = new byte[16];
+		int count;
+
+			
+		if (version == 103) {
+			//TES4 - Oblivion
+
+			boolean compressed = ((ArchiveFileBsa)archiveFile).isCompressed();
+			
+			//read off special inverted flag
+			if ((dataLength & (1 << 30)) != 0) {
+				dataLength ^= 1 << 30;
+				compressed = !compressed;
+			}
+
+			int unCompressedLength = 0;
+			if (compressed) {
+				// data area start with uncompressed size then compressed data
+				count = ch.read(ByteBuffer.wrap(buffer, 0, 4), dataOffset);
+				if (count != 4)
+					throw new EOFException("Compressed data is incomplete");
+				unCompressedLength = ArchiveFile.getInteger(buffer, 0);
+
+				dataOffset += 4L; // move past the uncompressed size into compressed data pointer
+				dataLength -= 4; // compressed size has uncompressed size int taken off						
+			}
+
+			setFileOffset(dataOffset);
+			setFileLength(unCompressedLength); //different to 104				
+			setCompressed(compressed); //different to 104
+			setCompressedLength(dataLength);//different to 104
+		} else if (version == 104) {
+			//FO3 - Fallout 3
+			//TES5 - Skyrim
+			
+			byte[] len = new byte[1];
+			int length;
+
+			// go to data area and read sizes off now
+			if (((ArchiveFileBsa)archiveFile).isDefaultCompressed()) {
+				count = ch.read(ByteBuffer.wrap(len), dataOffset);
+				length = (len[0] & 0xff) + 1;
+				dataOffset += length;
+				dataLength -= length;
+			}
+
+			//now do something a bit different if the other compressed flag is set
+			int compressedLength = 0;
+			boolean compressed = ((ArchiveFileBsa)archiveFile).isCompressed();
+			if (compressed) {
+
+				count = ch.read(ByteBuffer.wrap(buffer, 0, 4), dataOffset);
+				if (count != 4)
+					throw new EOFException("Compressed data is incomplete");
+
+				dataOffset += 4L;// move past the uncompressed size into compressed data pointer
+				compressedLength = dataLength - 4;// compressed size has uncompressed size int taken off		
+				dataLength = ArchiveFile.getInteger(buffer, 0);
+			}
+
+			setFileOffset(dataOffset);
+			setFileLength(dataLength);
+			setCompressed(compressed);
+			setCompressedLength(compressedLength);
+
+		} else {
+			throw new UnsupportedOperationException("BSA version " + version + " is not supported " + archiveFile.getName());
+		}
 	}
 
 }

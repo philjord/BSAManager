@@ -1,5 +1,6 @@
 package bsaio;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -71,8 +72,31 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 		this.count = buf.length;
 	}
 
+	
+	
+	
+	
 	public static ByteBuffer getByteBuffer(FileChannelRAF in, ArchiveEntry entry) throws IOException {		
 		FileChannel ch = in.getChannel();
+		
+		
+		//experiment, instead of the folder loading phase doing extra reads into the data area (at great expense?)
+		// we'll just get the entry loaded up now, code was in ensureLoaded()
+		
+		// FIXME:
+		// LOODNif has a problem in NifToJe3
+		//	at bsa.source.BsaTextureSource.getTextureUnitState(BsaTextureSource.java:347)
+		//	at bsa.source.BsaTextureSource.getTexture(BsaTextureSource.java:212)
+		//if(entry.ready) {			
+		//	new Throwable("Bad ArchiveEntry ready twice " +entry.archiveFile.fileName+ " " + entry.getFileLength() + " hash "
+		//			+ entry.getFileHashCode()).printStackTrace();
+		//}
+		entry.ensureEntryReady(ch);
+		
+		
+		
+		
+		
 		// not sure why this is bad, something weird with defaultcompressed flag the the archive load up
 		if (entry.getFileLength() == 0)
 			entry.setFileLength(entry.getCompressedLength());
@@ -85,7 +109,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 			return null;
 		}
 
-		//the inflate doesn't accept a bytebuffer
+
 		boolean isCompressed = entry.isCompressed();
 		if (isCompressed && entry.getFileLength() > 0) {
 			if (USE_MAPPED == 1 || USE_MAPPED == 0) {

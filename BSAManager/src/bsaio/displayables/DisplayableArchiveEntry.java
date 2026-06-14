@@ -7,19 +7,16 @@ public class DisplayableArchiveEntry extends ArchiveEntry implements Displayable
 
 	protected String	fileName;
 
-	private ArchiveFile	archiveFile;
-
 	private String		folderName;
 
 	private String		entryName;
 
-	public DisplayableArchiveEntry(ArchiveFile archiveFile, String folderName, String fileName) {
+	public DisplayableArchiveEntry(ArchiveFile archiveFile, String folderName, String fileName){
 		this(archiveFile, folderName, fileName, HashFormat.OLD);
 	}
 
 	public DisplayableArchiveEntry(ArchiveFile archiveFile, String folderName, String fileName, HashFormat hf) {
 		super(archiveFile, folderName, fileName, hf);
-		this.archiveFile = archiveFile;
 		this.folderName = folderName;
 		this.fileName = fileName;
 		entryName = (new StringBuilder()).append(folderName).append("\\").append(fileName).toString();
