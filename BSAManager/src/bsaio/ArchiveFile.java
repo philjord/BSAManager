@@ -196,25 +196,25 @@ public abstract class ArchiveFile {
 		return false;
 	}
 
-	protected static int getShort(byte buffer[], int offset) {
+	public static int getShort(byte buffer[], int offset) {
 		return buffer[offset + 0] & 0xff | (buffer[offset + 1] & 0xff) << 8;
 	}
 
-	protected static int getUShort(byte buffer[], int offset) {
+	public static int getUShort(byte buffer[], int offset) {
 		return (buffer[offset + 0] & 0xff | (buffer[offset + 1] & 0xff) << 8) & 0xffffffff;
 	}
 
-	protected static int getInteger(byte buffer[], int offset) {
+	public static int getInteger(byte buffer[], int offset) {
 		return buffer[offset + 0]	& 0xff	| (buffer[offset + 1] & 0xff) << 8 | (buffer[offset + 2] & 0xff) << 16
 				| (buffer[offset + 3] & 0xff) << 24;
 	}
 
-	protected static long getUInteger(byte buffer[], int offset) {
+	public static long getUInteger(byte buffer[], int offset) {
 		return (buffer[offset + 0]	& 0xff	| (buffer[offset + 1] & 0xff) << 8 | (buffer[offset + 2] & 0xff) << 16
 				| (buffer[offset + 3] & 0xff) << 24) & 0xffffffffL;
 	}
 
-	protected static long getLong(byte buffer[], int offset) {
+	public static long getLong(byte buffer[], int offset) {
 		return (buffer[offset + 0] & 255L) << 0 | (buffer[offset + 1] & 255L) << 8 | (buffer[offset + 2] & 255L) << 16
 				| (buffer[offset + 3] & 255L) << 24 | (buffer[offset + 4] & 255L) << 32
 				| (buffer[offset + 5] & 255L) << 40 | (buffer[offset + 6] & 255L) << 48
