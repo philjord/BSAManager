@@ -77,25 +77,18 @@ public class ArchiveFileBtdx extends ArchiveFile {
 		ArrayList<ArchiveEntry> ret = new ArrayList<ArchiveEntry>();
 		int filesToLoad = fileCount;
 		int currentProgress = 0;
-		try {
-			for (int f = 0; f < folderHashToFolderMap.size(); f++) {
-				Folder folder = folderHashToFolderMap.get(folderHashToFolderMap.keyAt(f));
-				if (folder.fileToHashMap == null) {
-					loadFolder(folder);
-				}
-				for (int i = 0; i < folder.fileToHashMap.size(); i++)
-					ret.add(folder.fileToHashMap.get(folder.fileToHashMap.keyAt(i)));
 
-				filesToLoad -= folder.folderFileCount;
-				int newProgress = (filesToLoad * 100) / fileCount;
-				if (newProgress >= currentProgress + 5) {
-					currentProgress = newProgress;
+		for (int f = 0; f < folderHashToFolderMap.size(); f++) {
+			Folder folder = folderHashToFolderMap.get(folderHashToFolderMap.keyAt(f));
+			for (int i = 0; i < folder.fileToHashMap.size(); i++)
+				ret.add(folder.fileToHashMap.get(folder.fileToHashMap.keyAt(i)));
 
-				}
+			filesToLoad -= folder.folderFileCount;
+			int newProgress = (filesToLoad * 100) / fileCount;
+			if (newProgress >= currentProgress + 5) {
+				currentProgress = newProgress;
+
 			}
-
-		} catch (IOException e) {
-			System.out.println("ArchiveFile Exception for filename:  " + e + " " + e.getStackTrace()[0]);
 		}
 
 		return ret;
@@ -133,11 +126,6 @@ public class ArchiveFileBtdx extends ArchiveFile {
 		}
 
 		return null;
-	}
-
-	@Override
-	protected void loadFolder(Folder folder) throws IOException {
-		throw new UnsupportedOperationException("BTDX is loaded at inital load time, so this should never be called");
 	}
 
 	@Override

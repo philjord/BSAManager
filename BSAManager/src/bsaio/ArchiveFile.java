@@ -139,13 +139,6 @@ public abstract class ArchiveFile {
 
 	public abstract ArchiveEntry getEntry(String fullFileName);
 
-	/**
-	 * Expensive don't call this casually
-	 * @param folder
-	 * @throws IOException
-	 */
-	protected abstract void loadFolder(Folder folder) throws IOException;
-
 	public static ArchiveFile createArchiveFile(boolean isForDisplay, FileChannel file, String fileName)
 			throws DBException, IOException {
 
