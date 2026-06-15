@@ -111,6 +111,14 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 		if (entry.isCompressed()) {
 			if (entry.getCompressionType() == ArchiveEntry.CompressionFormat.ZIP) {
 
+				
+				//I need to only load mips when needed, not all always!
+				//https://stackoverflow.com/questions/34306810/opengl-texture-mipmaps-load-and-unload
+				// perhaps start with baeLevel =  half way, then as loaded bring it down
+				// prolly need to load these thign the other way around
+				// also make the lower mipmap loader thread lower priority
+				
+					
 				if (USE_MAPPED == 0 || USE_MAPPED == 1) {
 					// each chunk can have any number of mips in it, so later one could be bigger than earlier!
 					Inflater inflater = new Inflater();
