@@ -23,15 +23,18 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 	private static ByteBufferPool	pool		= new ByteBufferPool();
 
 	/**
-	 * This constructor is not used in any game, only utils, it is not a wise thing to use, getByteBuffer below is the
+	 * This constructor is used in Android code to get maps out as bitmaps, and various utils, it is not a wise thing to use, getByteBuffer below is the
 	 * bettereer
 	 * @param in
 	 * @param entry
 	 * @throws IOException
 	 */
+	//FIXME: Android should juse getByteBuffer if possible
 	public ArchiveInputStream(FileChannelRAF in, ArchiveEntry entry) throws IOException {
 		super(new byte[0]);//reset below once data is available
 		FileChannel ch = in.getChannel();
+		
+		entry.ensureEntryReady(ch);
 
 		// not sure why this is bad, something weird with defaultcompressed flag the the archive load up
 		if (entry.getFileLength() == 0)
@@ -77,7 +80,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 	
 	public static ByteBuffer getByteBuffer(FileChannelRAF in, ArchiveEntry entry) throws IOException {		
 		FileChannel ch = in.getChannel();
-		
+	
 		
 		//experiment, instead of the folder loading phase doing extra reads into the data area (at great expense?)
 		// we'll just get the entry loaded up now, code was in ensureLoaded()
@@ -91,9 +94,6 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 		//			+ entry.getFileHashCode()).printStackTrace();
 		//}
 		entry.ensureEntryReady(ch);
-		
-		
-		
 		
 		
 		// not sure why this is bad, something weird with defaultcompressed flag the the archive load up
