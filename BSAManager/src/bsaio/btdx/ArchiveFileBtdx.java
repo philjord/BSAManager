@@ -230,7 +230,8 @@ public class ArchiveFileBtdx extends ArchiveFile {
 		}
 
 		String[] fileNames = null;
-		if (this.isForDisplay) {
+		if (this.isForDisplay)
+		{
 			// we jump to the name table (which is after the file records)
 			pos = nameTableOffset;
 
@@ -277,13 +278,13 @@ public class ArchiveFileBtdx extends ArchiveFile {
 		for (int i = 0; i < fileCount; i++) {
 
 			Folder folder = null;
-
+			
 			// these 2 and folder above will  be filled now when if (this.isForDisplay || this.hasUndecipheredHash) {
 			// is true so only use them in that case, folder gets set during file indexing below otherwise
 			String fileName = null;
 			String folderName = null;
 			if (this.isForDisplay) {
-				String fullFileName = fileNames[i].toLowerCase();
+				String fullFileName = fileNames[i].toLowerCase();				
 				fullFileName = fullFileName.trim();
 				if (fullFileName.indexOf("/") != -1) {
 					StringBuilder buildName = new StringBuilder(fullFileName);
@@ -317,6 +318,9 @@ public class ArchiveFileBtdx extends ArchiveFile {
 				nameHash = getUInteger(buffer, i * 36 + 0);
 				extension = new String(buffer, i * 36 + 4, 4);
 				dirHash = getUInteger(buffer, i * 36 + 8);
+				
+				//mix name and ext into one hash
+				nameHash = HashCode.hashCodeCRC32(nameHash, extension);
 
 				ArchiveEntry entry;
 				if (this.isForDisplay) {
@@ -370,6 +374,9 @@ public class ArchiveFileBtdx extends ArchiveFile {
 				nameHash = getUInteger(buffer, 0);
 				extension = new String(buffer, 4, 4);
 				dirHash = getUInteger(buffer, 8);
+				
+				//mix name and ext into one hash
+				nameHash = HashCode.hashCodeCRC32(nameHash, extension);
 
 				ArchiveEntryDX10 entry;
 				if (this.isForDisplay) {
@@ -436,6 +443,9 @@ public class ArchiveFileBtdx extends ArchiveFile {
 				extension = new String(buffer, 4, 4);
 				dirHash = getInteger(buffer, 8);
 
+				//mix name and ext into one hash
+				nameHash = HashCode.hashCodeCRC32(nameHash, extension);
+				
 				//https://github.com/AlexxEG/BSA_Browser/blob/master/Sharp.BSA.BA2/BA2Util/BA2GNFEntry.cs
 
 				ArchiveEntryGNFDX10 entry;

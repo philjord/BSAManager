@@ -1,5 +1,6 @@
 package bsaio;
 
+ 
 import tools.io.PrimitiveBytes;
 
 // less useful references
@@ -161,6 +162,7 @@ public class HashCode implements Comparable<HashCode> {
 
 		long h = 0;
 		//sometime we see filename like .ffxanim
+		
 		if (name != null) {
 			byte[] buffer = PrimitiveBytes.getBytesFast(name);
 			for (byte c : buffer) {
@@ -168,19 +170,45 @@ public class HashCode implements Comparable<HashCode> {
 			}
 		}
 
-		//It seems extensions are ignored in this hashing function
-		// but here is the hash function for them from the fo4.cpp above
-		// if we have an extension (and are therefore not folder)
-		/*if (ext != null && ext.length() > 0) {
+		// now mix the extension in to ensure unique hashes
+		long subHash = 0L;
+		if (ext != null && ext.length() > 0) {
 			byte[] buf2 = PrimitiveBytes.getBytesFast(ext);//ext.getBytes();
 			int length = Math.min(buf2.length, 4);
-			long subHash = 0L;
+			
 			for (int i = 0; i < length; i++) {
 				subHash |= (buf2[i] & 255L) << (i * 8);
 			}
-		}*/
+		}
+		
+		h |= subHash; 
+		
+		// am I including diacritic when I should use normal text? no  name = Normalizer.normalize(name, Normalizer.Form.NFD);
+		//hash incorrect fileName maría_f.fuz hash in archive 2481426519, but crc32  1579810673 fullfilename is [Sound\Voice\Fallout4.esm\RobotMrHandy\María_F.fuz]
+		//hash incorrect fileName maría_m.fuz hash in archive 70601183, but crc32  3388679929 fullfilename is [Sound\Voice\Fallout4.esm\RobotMrHandy\María_M.fuz]
+		//hash incorrect fileName sánchez_f.fuz hash in archive 3373015174, but crc32  3063137134 fullfilename is [Sound\Voice\Fallout4.esm\RobotMrHandy\Sánchez_F.fuz]
+
 
 		return h;
+	}
+	
+	/**
+	 * Used to mix a ba2 files hash coded with it's extension to get a new unique hash to avoid files of the same name
+	 * and different extensions clashing
+	 */
+	public static long hashCodeCRC32(long nameHash, String ext) {
+		long subHash = 0L;
+		if (ext != null && ext.length() > 0) {
+			byte[] buf2 = PrimitiveBytes.getBytesFast(ext);//ext.getBytes();
+			int length = Math.min(buf2.length, 4);
+			
+			for (int i = 0; i < length; i++) {
+				subHash |= (buf2[i] & 255L) << (i * 8);
+			}
+		}
+		
+		nameHash |= subHash;
+		return nameHash;
 	}
 
 	private static long[] crc32Table_EDB88320 = new long[] {0x00000000L, 0x77073096L, 0xEE0E612CL, 0x990951BAL,
