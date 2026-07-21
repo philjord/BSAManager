@@ -286,7 +286,8 @@ public class ArchiveFileBsa extends ArchiveFile {
 
 	@Override
 	public boolean hasNifOrKf() {
-		return (fileFlags & 1) != 0 || (fileFlags & 0x40) != 0;
+		// Note [Skyrim - Animations.bsa] has hkx fils and a fileFlags of 0 (and archiveFlags of 7)		
+		return (fileFlags & 1) != 0 || (fileFlags & 0x40) != 0 || fileFlags == 0;
 	}
 
 	@Override
