@@ -102,12 +102,11 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 
 		// biggest file seen nif file at about 12 meg, all great sizes are a bad entry
 		// except the 95 mb (uncompressed) cdb file inside the materials ba2 for starfield
-		if ((entry.getFileLength() < 0 || entry.getFileLength() > 16000000) && entry.getFileHashCode() != 3502042577L) {
+		if ((entry.getFileLength() < 0 || entry.getFileLength() > 16000000) && entry.getFileHashCode() != 3506367987L) {
 			new Throwable("Bad ArchiveEntry entry.getFileLength() " + entry.getFileLength() + " hash "
 							+ entry.getFileHashCode()).printStackTrace();
 			return null;
 		}
-
 
 		boolean isCompressed = entry.isCompressed();
 		if (isCompressed && entry.getFileLength() > 0) {
