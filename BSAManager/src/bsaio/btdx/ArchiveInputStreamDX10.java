@@ -21,12 +21,18 @@ import bsaio.btdx.DDS_HEADER.DDS_PIXELFORMAT;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4FastDecompressor;
 import tools.io.FileChannelRAF;
+import zipBB.Inflater.InflationException;
+import zipBB.ZlibHeaderTrailerParser;
+import zipBB.ZlibHeaderTrailerParser.ZlibHeader;
 
 /**
  * @author philip
  *
  */
 public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
+	
+	private static boolean useJavaInflator = true;
+	
 	public static boolean				m_useATIFourCC	= false;
 
 	//https://github.com/yawkat/lz4-java
@@ -79,13 +85,16 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 	 * @throws IOException
 	 */
 	public static ByteBuffer getByteBuffer(FileChannelRAF in, ArchiveEntry entry) throws IOException {
-		return getByteBuffer(in, entry, true); 
+		return getByteBuffer(in, entry, true);
 	}
+
 	
+
+	// new pure java version to try any mega optomisations I can find
 	//non direct added to support the stream init thing
 	private static ByteBuffer getByteBuffer(FileChannelRAF in, ArchiveEntry entry, boolean direct) throws IOException {
 		if (decompressor == null) {
-			factory = LZ4Factory.fastestInstance();
+			factory = LZ4Factory.fastestInstance();//fastestJavaInstance();//note should try the unsafe java version
 			decompressor = factory.fastDecompressor();
 		}
 
@@ -101,8 +110,10 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 		for (int j = 0; j < tex.chunks.length; j++) {
 			requiredBufferSize += tex.chunks[j].unpackedLen;
 		}
+
 		// collect up all the chunks
-		ByteBuffer dst = direct ? ByteBuffer.allocateDirect(requiredBufferSize) : ByteBuffer.allocate(requiredBufferSize);
+		ByteBuffer dst = direct ? ByteBuffer.allocateDirect(requiredBufferSize) : ByteBuffer
+				.allocate(requiredBufferSize);
 		dst.order(ByteOrder.LITTLE_ENDIAN);//NOTE!!!
 
 		insertHeader(tex, dst);
@@ -111,17 +122,15 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 		if (entry.isCompressed()) {
 			if (entry.getCompressionType() == ArchiveEntry.CompressionFormat.ZIP) {
 
-				
 				//I need to only load mips when needed, not all always!
 				//https://stackoverflow.com/questions/34306810/opengl-texture-mipmaps-load-and-unload
 				// perhaps start with baeLevel =  half way, then as loaded bring it down
 				// prolly need to load these thign the other way around
 				// also make the lower mipmap loader thread lower priority
-				
-					
+
 				if (USE_MAPPED == 0 || USE_MAPPED == 1) {
 					// each chunk can have any number of mips in it, so later one could be bigger than earlier!
-					Inflater inflater = new Inflater();
+			
 					for (int j = 0; j < tex.chunks.length; j++) {
 						DX10Chunk chunk = tex.chunks[j];
 
@@ -134,29 +143,14 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 							dataBufferInBB.rewind();
 						} else {
 							dataBufferInBB = ch.map(MapMode.READ_ONLY, chunk.offset, chunk.packedLen);
-						}
-
-						inflater.setInput(dataBufferInBB);
-
-						try {
-							int count = inflater.inflate(dst);
-							if (count != chunk.unpackedLen)
-								System.err.println("Inflate count issue! count = "	+ count + " expected "
-													+ chunk.unpackedLen + " hashcode= " + entry.getFileHashCode());
-						} catch (DataFormatException e) {
-							System.err.println(
-									ArchiveInputStream.class.getName()	+ ".getByteBuffer Inflater DataFormatException "
-												+ " hashcode= " + entry.getFileHashCode());
-						}
-						inflater.reset();
+						}						
+						inflate(dataBufferInBB, dst, entry.getFileLength(), entry.getFileHashCode());
+		
 						if (USE_MAPPED == 0) {
 							pool.give(dataBufferInBB);
 						}
 					}
 				} else {
-
-					// Java straight inflate load near =13sec
-					Inflater inflater = new Inflater();
 
 					// each chunk can have any number of mips in it, so later one could be bigger than earlier!
 					byte[] srcBuf = new byte[tex.chunks[0].packedLen];
@@ -170,26 +164,12 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 
 						if (chunk.unpackedLen > dstBuff.length)
 							dstBuff = new byte[chunk.unpackedLen];
-
-						//byte[] srcBuf = new byte[chunk.packedLen];
+						
 						int c = ch.read(ByteBuffer.wrap(srcBuf, 0, chunk.packedLen), chunk.offset);
 						if (c < 0)
 							throw new EOFException("Unexpected end of stream while inflating file");
-
-						inflater.setInput(srcBuf, 0, chunk.packedLen);
-
-						try {
-
-							int count = inflater.inflate(dstBuff);
-							if (count != chunk.unpackedLen)
-								System.err.println("ZIP Inflate count issue! ArchiveInputStreamDX10 ");
-
-						} catch (DataFormatException e) {
-							e.printStackTrace();
-						}
-
-						inflater.reset();
-						dst.put(dstBuff, 0, chunk.unpackedLen);
+						ByteBuffer src = ByteBuffer.wrap(srcBuf);
+						inflate(src, dst, entry.getFileLength(), entry.getFileHashCode());						
 					}
 				}
 			} else if (entry.getCompressionType() == ArchiveEntry.CompressionFormat.LZ4) {
@@ -213,12 +193,11 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 							}
 
 							try {
-								
 
 								ByteBuffer dstBuff = dst.slice();// notice LITTLE_ENDIAN but dst is big, does it matter?					
-								int count = decompressor.decompress(dataBufferInBB, 0, dstBuff, 0,	chunk.unpackedLen);
+								int count = decompressor.decompress(dataBufferInBB, 0, dstBuff, 0, chunk.unpackedLen);
 								dst.position(dst.position() + chunk.unpackedLen);// cos decompress doesn't move this
-								
+
 								if (count != chunk.unpackedLen) {
 									// super common and using count causings issue, presumably alignment numbers
 								}
@@ -321,7 +300,60 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 		return dst;
 
 	}
+	
+	/**
+	 * A separate method so we can easily swap between native and Java inflators
+	 */
+	private static void inflate(ByteBuffer src, ByteBuffer dest, int fileLength, long fileHashCode) {
+		if (useJavaInflator) {
+			zipBB.Inflater inflater = new zipBB.Inflater();
+			try {
+				ZlibHeader header = ZlibHeaderTrailerParser.parseHeader(src);
+				if (header == null) {
+					throw new AssertionError(
+							"Expect to read the header in the first try since the buffer is large enough.");
+				}
+				if (header.dictChecksum != 0) {
+					throw new AssertionError("Expect to have no dictionary.");
+				}
 
+				boolean done = false;
+				while (!done) {
+					switch (inflater.inflate(dest, src)) {
+						case NEED_MORE_INPUT:
+							//not sure about this but keep trucking anyway
+							break;
+						case NEED_MORE_OUTPUT:
+							//only does 65k per call just keep going
+							break;
+						case DONE:
+							done = true;
+							break;
+					}
+				}
+
+			} catch (InflationException e) {
+				System.err.println(ArchiveInputStream.class.getName()	+ ".getByteBuffer Inflater InflationException "
+									+ " hashcode= " + fileHashCode);
+			}
+			inflater.reset();
+		} else {
+			Inflater inflater = new Inflater();
+			inflater.setInput(src);
+			try {
+				int count = inflater.inflate(dest);
+				if (count != fileLength)
+					System.err.println("Inflate count issue! coutn = "	+ count + " expected " + fileLength
+										+ " hashcode= " + fileHashCode);
+			} catch (DataFormatException e) {
+				System.err.println(ArchiveInputStream.class.getName()	+ ".getByteBuffer Inflater DataFormatException "
+									+ " hashcode= " + fileHashCode);
+			}
+			inflater.end();
+		}
+	}
+	
+	
 	private static void insertHeader(ArchiveEntryDX10 tex, ByteBuffer dst) {
 		//FIXME: textures not loading yet
 		//STF
