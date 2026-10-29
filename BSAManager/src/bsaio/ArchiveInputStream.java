@@ -20,11 +20,11 @@ import zipBB.ZlibHeaderTrailerParser.ZlibHeader;
 
 public class ArchiveInputStream extends FastByteArrayInputStream {
 
-	private static boolean			useJavaInflator	= true;
+	public static boolean			USE_JAVE_INFLATOR	= false;
 	//1,0,-1 1 uses mapped from channels, 0 reads into a bytebuffer, both seem the same for speed and memory use
-	public static int				USE_MAPPED		= 1;
+	public static int				USE_MAPPED			= 1;
 
-	private static ByteBufferPool	pool			= new ByteBufferPool();
+	private static ByteBufferPool	pool				= new ByteBufferPool();
 
 	/**
 	 * This constructor is used in Android code to get maps out as bitmaps, and various utils, it is not a wise thing to use, getByteBuffer below is the
@@ -46,7 +46,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 
 		byte[] dataBufferOut = new byte[entry.getFileLength()];
 		ByteBuffer dest = ByteBuffer.wrap(dataBufferOut);
-		 
+
 		boolean isCompressed = entry.isCompressed();
 		if (isCompressed && entry.getFileLength() > 0) {
 			// entry size for buffer
@@ -73,7 +73,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 		// we'll just get the entry loaded up now, code was in ensureLoaded()
 
 		// FIXME:
-		// LOODNif has a problem in NifToJe3
+		// LOODNif has a problem in NifToJd3
 		//	at bsa.source.BsaTextureSource.getTextureUnitState(BsaTextureSource.java:347)
 		//	at bsa.source.BsaTextureSource.getTexture(BsaTextureSource.java:212)
 		//if(entry.ready) {			
@@ -116,7 +116,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 				}
 				dest.rewind();
 				return dest;
-			} else {			
+			} else {
 				ByteBuffer dest = ByteBuffer.allocateDirect(entry.getFileLength());
 				dest.order(ByteOrder.nativeOrder());
 				int compressedLength = entry.getCompressedLength();
@@ -141,7 +141,7 @@ public class ArchiveInputStream extends FastByteArrayInputStream {
 	 * A separate method so we can easily swap between native and Java inflators
 	 */
 	private static void inflate(ByteBuffer src, ByteBuffer dest, int fileLength, long fileHashCode) {
-		if (useJavaInflator) {
+		if (USE_JAVE_INFLATOR) {
 			zipBB.Inflater inflater = new zipBB.Inflater();
 			try {
 				ZlibHeader header = ZlibHeaderTrailerParser.parseHeader(src);

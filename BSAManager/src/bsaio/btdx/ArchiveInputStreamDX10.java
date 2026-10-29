@@ -31,8 +31,6 @@ import zipBB.ZlibHeaderTrailerParser.ZlibHeader;
  */
 public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 	
-	private static boolean useJavaInflator = true;
-	
 	public static boolean				m_useATIFourCC	= false;
 
 	//https://github.com/yawkat/lz4-java
@@ -144,7 +142,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 						} else {
 							dataBufferInBB = ch.map(MapMode.READ_ONLY, chunk.offset, chunk.packedLen);
 						}						
-						inflate(dataBufferInBB, dst, entry.getFileLength(), entry.getFileHashCode());
+						inflate(dataBufferInBB, dst, chunk.unpackedLen, entry.getFileHashCode());
 		
 						if (USE_MAPPED == 0) {
 							pool.give(dataBufferInBB);
@@ -169,7 +167,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 						if (c < 0)
 							throw new EOFException("Unexpected end of stream while inflating file");
 						ByteBuffer src = ByteBuffer.wrap(srcBuf);
-						inflate(src, dst, entry.getFileLength(), entry.getFileHashCode());						
+						inflate(src, dst, chunk.unpackedLen, entry.getFileHashCode());						
 					}
 				}
 			} else if (entry.getCompressionType() == ArchiveEntry.CompressionFormat.LZ4) {
@@ -305,7 +303,7 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 	 * A separate method so we can easily swap between native and Java inflators
 	 */
 	private static void inflate(ByteBuffer src, ByteBuffer dest, int fileLength, long fileHashCode) {
-		if (useJavaInflator) {
+		if (ArchiveInputStream.USE_JAVE_INFLATOR) {
 			zipBB.Inflater inflater = new zipBB.Inflater();
 			try {
 				ZlibHeader header = ZlibHeaderTrailerParser.parseHeader(src);
