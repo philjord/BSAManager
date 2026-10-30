@@ -336,6 +336,12 @@ public class ArchiveInputStreamDX10 extends FastByteArrayInputStream {
 			}
 			inflater.reset();
 		} else {
+			//FO76 uses 25% time on inflate, FO4 uses 50%
+			//https://bugs.openjdk.org/browse/JDK-8282648
+			// says I can use zlib-chromium by way of 'LD_LIBRARY_PATH` or by using `LD_PRELOAD`
+			//https://stackoverflow.com/questions/42287141/ld-library-path-does-not-work
+			
+			//https://bugs.openjdk.org/browse/JDK-8249963
 			Inflater inflater = new Inflater();
 			inflater.setInput(src);
 			try {
